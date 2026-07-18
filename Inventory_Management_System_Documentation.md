@@ -64,30 +64,39 @@ Admin users can:
 
 ## 4. System Modules
 
-## 4.1 Student Side
+## 4.1 login
 
-### 4.1.1 Login Page
+The Login page will have a shared page among all three(Student, Faculty, Admin). There should be a drop down menu to select the entity.
 
-The student login page should collect the following details:
+### 4.1.1 Student Sign up Required fields:
 
-- Student name
-- Enrollment number
-- Semester
-- Division
-- Residence type:
-  - Hostel
-  - Home
+- Name 
+- University email
+- Phone number 
+- University Program
+- Stay(home/hostel)
+- Password 
+- Confirm Password 
 
-Optional future fields:
+### 4.1.2 Faculty Sign up Required fields:
 
-- Email address
-- Phone number
-- Department
-- ID card upload
+The Password to there account will be mailed to them and they have to change it later.
+The Password will be randomly generated and will require them to change it to futher proceed with it's use.
 
-The enrollment number should be used as the main unique identifier for each student.
+- University email
+- Password
 
-### 4.1.2 Browsing Page
+### 4.1.3 Admin Sign up Required fields:
+
+Admin Sign up or login will not be available in the drop down menu, insted it will be hidden.
+
+- University Admin email
+- OPT submition via Authenticator
+
+No password will be made, the login will be approval by the OPT generation By any authenticator app. 
+## 4.2 Student Side
+
+### 4.2.1 Browsing Page
 
 The browsing page should display inventory items divided by lab sections.
 
@@ -119,7 +128,7 @@ Example item categories:
 - Prototyping tools
 - Lab accessories
 
-### 4.1.3 Cart and Checkout Page
+### 4.2.2 Cart and Checkout Page
 
 The checkout page should allow students to review selected items before submitting a request.
 
@@ -150,9 +159,9 @@ Example documents:
 - Lab request form
 - Student ID proof
 
-## 4.2 Faculty Side
+## 4.3 Faculty Side
 
-### 4.2.1 Faculty Dashboard
+### 4.3.1 Faculty Dashboard
 
 The faculty dashboard should show:
 
@@ -163,7 +172,7 @@ The faculty dashboard should show:
 - Overdue items
 - Inventory summary for assigned lab
 
-### 4.2.2 Approval System
+### 4.3.2 Approval System
 
 Faculty should be able to:
 
@@ -185,7 +194,7 @@ Approval status values:
 - Overdue
 - Cancelled
 
-### 4.2.3 Inventory Management
+### 4.3.3 Inventory Management
 
 Faculty should be able to manage inventory for their assigned lab.
 
@@ -199,9 +208,9 @@ Faculty inventory actions:
 - Confirm item return.
 - Report damaged or missing items.
 
-## 4.3 Admin Side
+## 4.4 Admin Side
 
-### 4.3.1 Admin Dashboard
+### 4.4.1 Admin Dashboard
 
 The admin dashboard should provide a complete overview of both labs.
 
@@ -215,7 +224,7 @@ Dashboard sections:
 - Active penalties
 - Recent borrowing activity
 
-### 4.3.2 Student Borrowing List
+### 4.4.2 Student Borrowing List
 
 Admin should be able to view a list of students who have borrowed items.
 
@@ -242,7 +251,7 @@ Admin should be able to filter records by:
 - Item name
 - Penalty status
 
-### 4.3.3 Item History Tab
+### 4.4.3 Item History Tab
 
 Each inventory item should have a history tab.
 
@@ -260,7 +269,7 @@ Item history should include:
 - Damage or loss reports
 - Penalty records
 
-### 4.3.4 Document Review
+### 4.4.4 Document Review
 
 Admin should be able to review documents uploaded by students.
 
@@ -275,7 +284,7 @@ Document review should include:
 - Faculty decision
 - Admin remarks
 
-### 4.3.5 Add Items System
+### 4.4.5 Add Items System
 
 Admin should be able to add new inventory items.
 
@@ -302,7 +311,7 @@ Admin should also be able to:
 - Mark items as damaged.
 - Mark items as unavailable.
 
-### 4.3.6 Override System
+### 4.4.6 Override System
 
 Admin should have the authority to override faculty decisions.
 
