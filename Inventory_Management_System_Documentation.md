@@ -564,7 +564,123 @@ Notification channels:
 - remarks
 - created_at
 
-## 9. Page List
+## 9. File System / Project Structure
+
+The project is organized as a full-stack web application with a React frontend, an Express backend, a MySQL database layer, and a server-side upload directory for student documents.
+
+Recommended file system structure:
+
+```text
+Inventory_Management_System/
+├── Inventory_Management_System_Documentation.md
+├── README.md
+├── package.json
+├── package-lock.json
+├── client/
+│   ├── index.html
+│   ├── package.json
+│   └── src/
+│       ├── App.jsx
+│       ├── main.jsx
+│       ├── api/
+│       │   └── http.js
+│       ├── components/
+│       │   └── MetricCard.jsx
+│       ├── layouts/
+│       │   └── AppLayout.jsx
+│       ├── pages/
+│       │   ├── AdminDashboard.jsx
+│       │   ├── FacultyDashboard.jsx
+│       │   ├── InventoryPage.jsx
+│       │   ├── LoginPage.jsx
+│       │   ├── PenaltiesPage.jsx
+│       │   ├── RequestsPage.jsx
+│       │   └── StudentDashboard.jsx
+│       └── styles/
+│           └── app.css
+└── server/
+    ├── package.json
+    ├── uploads/
+    │   └── .gitkeep
+    └── src/
+        ├── app.js
+        ├── server.js
+        ├── config/
+        │   └── database.js
+        ├── controllers/
+        ├── middleware/
+        ├── models/
+        ├── routes/
+        ├── scripts/
+        ├── services/
+        └── utils/
+```
+
+### 9.1 Root Files
+
+- `Inventory_Management_System_Documentation.md`: Main system documentation and requirements.
+- `README.md`: Setup instructions, stack summary, API overview, and starter account information.
+- `package.json`: Root project scripts for installing dependencies and running the app.
+- `package-lock.json`: Locked dependency versions.
+
+### 9.2 Client File System
+
+The `client/` folder contains the frontend application.
+
+- `client/index.html`: Main HTML entry point for the Vite app.
+- `client/src/main.jsx`: React application bootstrap file.
+- `client/src/App.jsx`: Main route and application composition file.
+- `client/src/api/http.js`: Shared HTTP client configuration for backend API calls.
+- `client/src/components/`: Reusable UI components.
+- `client/src/layouts/`: Shared page layout components.
+- `client/src/pages/`: Role-based and feature-specific pages.
+- `client/src/styles/`: Application CSS files.
+
+### 9.3 Server File System
+
+The `server/` folder contains the backend API application.
+
+- `server/src/app.js`: Express app configuration, middleware setup, and route mounting.
+- `server/src/server.js`: Server startup file.
+- `server/src/config/database.js`: Database connection configuration.
+- `server/src/models/`: Sequelize models for users, labs, inventory items, requests, documents, approvals, history, and penalties.
+- `server/src/controllers/`: Business logic for each API feature.
+- `server/src/routes/`: API route definitions grouped by feature.
+- `server/src/middleware/`: Authentication, upload handling, and error handling middleware.
+- `server/src/services/`: Shared backend services such as email notifications.
+- `server/src/scripts/`: Database sync and seed scripts.
+- `server/src/utils/`: Shared utility functions and constants.
+
+### 9.4 Upload File System
+
+Uploaded student documents are stored in:
+
+```text
+server/uploads/
+```
+
+Upload rules:
+
+- Supported file types: PDF, JPG, JPEG, and PNG.
+- Maximum file size: 5 MB.
+- Uploaded files should be renamed by the server to avoid filename conflicts.
+- The original file name, stored file path, MIME type, uploader role, and request ID should be saved in the `Documents` database table.
+- Faculty and admin users should access uploaded documents through authenticated API routes, not by directly browsing the upload folder.
+- The `server/uploads/.gitkeep` file exists only to keep the empty upload directory in version control.
+- Actual uploaded documents should not be committed to version control.
+
+### 9.5 File System Security Requirements
+
+- Uploaded files must be validated before storage.
+- Only authenticated users should upload or view documents.
+- Students should only access documents linked to their own requests.
+- Faculty should only access documents for requests assigned to their lab.
+- Admin users may access all uploaded documents.
+- File paths returned by the API should not expose unnecessary internal server details.
+- The server should prevent path traversal and direct access to unauthorized files.
+- Production deployments should store uploads in a protected disk location or object storage service with access control.
+
+## 10. Page List
 
 ### Student Pages
 
@@ -602,7 +718,7 @@ Notification channels:
 - Override approval page
 - Penalty management page
 
-## 10. Security Requirements
+## 11. Security Requirements
 
 - Role-based access control must be implemented.
 - Students should only access their own requests and records.
@@ -613,7 +729,7 @@ Notification channels:
 - All approval and override actions must be logged.
 - Important actions should require confirmation.
 
-## 11. Functional Requirements
+## 12. Functional Requirements
 
 - The system must allow students to log in and submit borrowing requests.
 - The system must show item availability in real time.
@@ -626,7 +742,7 @@ Notification channels:
 - The system must track penalties.
 - The system must provide separate dashboards for student, faculty, and admin.
 
-## 12. Non-Functional Requirements
+## 13. Non-Functional Requirements
 
 - The web app should be responsive and usable on desktop, tablet, and mobile.
 - The interface should be simple and easy to use.
@@ -636,7 +752,7 @@ Notification channels:
 - The system should support search and filtering.
 - The system should maintain audit logs for sensitive actions.
 
-## 13. Future Enhancements
+## 14. Future Enhancements
 
 - QR code scanning for item issue and return.
 - Barcode-based inventory tracking.
@@ -648,6 +764,6 @@ Notification channels:
 - Analytics dashboard for lab usage.
 - Maintenance schedule for lab equipment.
 
-## 14. Conclusion
+## 15. Conclusion
 
 This Inventory Management System will help Makers Lab 2 and Design IoT Lab manage borrowing, approvals, returns, reminders, and penalties in a structured digital way. It reduces manual paperwork, improves accountability, and provides clear visibility for students, faculty, and admin users.
