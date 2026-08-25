@@ -7,6 +7,7 @@ import AdminDashboard from "./pages/AdminDashboard.jsx";
 import InventoryPage from "./pages/InventoryPage.jsx";
 import RequestsPage from "./pages/RequestsPage.jsx";
 import PenaltiesPage from "./pages/PenaltiesPage.jsx";
+import React from "react";
 
 export default function App() {
   return (

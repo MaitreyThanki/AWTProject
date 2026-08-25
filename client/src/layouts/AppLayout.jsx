@@ -1,5 +1,6 @@
 import { Boxes, ClipboardList, Gauge, LogIn, WalletCards } from "lucide-react";
 import { Link, Outlet } from "react-router-dom";
+import React from "react";
 
 const links = [
   { to: "/student", label: "Dashboard", icon: Gauge },

@@ -1,5 +1,5 @@
 import MetricCard from "../components/MetricCard.jsx";
-
+import React from "react";
 export default function StudentDashboard() {
   return (
     <section>
