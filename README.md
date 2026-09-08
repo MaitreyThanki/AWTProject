@@ -2,7 +2,7 @@
 
 Basic full-stack skeleton for the lab inventory borrowing system described in
 `Inventory_Management_System_Documentation.md`.
-
+Corrently in devlopment
 ## Stack
 
 - React + Vite frontend
