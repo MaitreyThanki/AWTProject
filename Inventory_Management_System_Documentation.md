@@ -449,120 +449,284 @@ Notification channels:
 - Email
 - In-app dashboard notification
 
-## 8. Suggested Database Tables
+## 8. MongoDB Database Design
 
-### 8.1 Students
+The system will use MongoDB as its primary database. Data will be organized into collections containing JSON-like documents.
 
-- student_id
-- name
-- enrollment_number
-- semester
-- division
-- residence_type
-- email
-- phone
-- created_at
+The database will use a combination of:
 
-### 8.2 Labs
+* Separate collections for independently managed entities.
+* Embedded documents for data that belongs closely to a parent record.
+* MongoDB ObjectId references where relationships between collections are required.
 
-- lab_id
-- lab_name
-- faculty_incharge_name
-- faculty_incharge_email
+### 8.1 Users Collection
 
-### 8.3 InventoryItems
+The `users` collection will store student, faculty, and admin accounts.
 
-- item_id
-- item_name
-- asset_code
-- lab_id
-- category
-- description
-- total_quantity
-- available_quantity
-- condition
-- status
-- borrow_duration_days
-- image_url
-- created_at
-- updated_at
+Fields:
 
-### 8.4 BorrowRequests
+* `_id`
+* `name`
+* `email`
+* `passwordHash`
+* `role`
+* `phone`
+* `enrollmentNumber`
+* `universityProgram`
+* `semester`
+* `division`
+* `residenceType`
+* `createdAt`
+* `updatedAt`
 
-- request_id
-- student_id
-- request_date
-- expected_return_date
-- actual_return_date
-- purpose
-- status
-- faculty_remarks
-- admin_remarks
-- created_at
-- updated_at
+Role values:
 
-### 8.5 BorrowRequestItems
+* `student`
+* `faculty`
+* `admin`
 
-- request_item_id
-- request_id
-- item_id
-- quantity_requested
-- quantity_issued
-- return_status
+---
 
-### 8.6 Documents
+### 8.2 Labs Collection
 
-- document_id
-- request_id
-- uploaded_by
-- file_name
-- file_path
-- file_type
-- upload_date
+The `labs` collection will store laboratory information.
 
-### 8.7 Approvals
+Fields:
 
-- approval_id
-- request_id
-- faculty_id
-- decision
-- remarks
-- decision_date
+* `_id`
+* `name`
+* `facultyInchargeName`
+* `facultyInchargeEmail`
+* `createdAt`
+* `updatedAt`
 
-### 8.8 Overrides
+Required labs:
 
-- override_id
-- request_id
-- admin_id
-- previous_status
-- updated_status
-- reason
-- override_date
+* Makers Lab 2
+* Design IoT Lab
 
-### 8.9 Penalties
+---
 
-- penalty_id
-- request_id
-- student_id
-- item_id
-- penalty_reason
-- amount
-- status
-- remarks
-- created_at
-- updated_at
+### 8.3 Inventory Collection
 
-### 8.10 ItemHistory
+The `inventory_items` collection will store all lab equipment.
 
-- history_id
-- item_id
-- request_id
-- student_id
-- action
-- previous_quantity
-- updated_quantity
-- remarks
-- created_at
+Fields:
+
+* `_id`
+* `name`
+* `assetCode`
+* `labId`
+* `category`
+* `description`
+* `totalQuantity`
+* `availableQuantity`
+* `condition`
+* `status`
+* `borrowDurationDays`
+* `imageUrl`
+* `createdAt`
+* `updatedAt`
+
+Status values:
+
+* `available`
+* `unavailable`
+* `damaged`
+
+---
+
+### 8.4 Borrow Requests Collection
+
+The `borrow_requests` collection will store student borrowing requests.
+
+Fields:
+
+* `_id`
+* `studentId`
+* `expectedBorrowDate`
+* `expectedReturnDate`
+* `actualReturnDate`
+* `purpose`
+* `status`
+* `facultyRemarks`
+* `adminRemarks`
+* `items`
+* `documents`
+* `approvals`
+* `createdAt`
+* `updatedAt`
+
+Status values:
+
+* `pending`
+* `approved`
+* `rejected`
+* `issued`
+* `returned`
+* `overdue`
+* `cancelled`
+
+#### Embedded Items
+
+Each request will contain an `items` array.
+
+Each item will contain:
+
+* `itemId`
+* `itemName`
+* `quantityRequested`
+* `quantityIssued`
+* `returnStatus`
+
+Example:
+
+```json
+{
+  "items": [
+    {
+      "itemId": "ObjectId",
+      "itemName": "Arduino Starter Kit",
+      "quantityRequested": 2,
+      "quantityIssued": 2,
+      "returnStatus": "issued"
+    }
+  ]
+}
+```
+
+This replaces the separate relational `BorrowRequestItems` table.
+
+---
+
+### 8.5 Documents
+
+Documents uploaded for a request may be stored as embedded document metadata inside the corresponding `borrow_requests` document.
+
+Each document record will contain:
+
+* `documentId`
+* `uploadedBy`
+* `fileName`
+* `filePath`
+* `fileType`
+* `uploadDate`
+
+The actual uploaded file will remain in the protected server upload directory.
+
+---
+
+### 8.6 Approvals
+
+Approval information may be embedded inside the corresponding borrowing request.
+
+Each approval record will contain:
+
+* `facultyId`
+* `decision`
+* `remarks`
+* `decisionDate`
+
+Decision values:
+
+* `approved`
+* `rejected`
+
+---
+
+### 8.7 Override Logs Collection
+
+The `override_logs` collection will store administrative overrides.
+
+Fields:
+
+* `_id`
+* `requestId`
+* `adminId`
+* `previousStatus`
+* `updatedStatus`
+* `reason`
+* `overrideDate`
+
+All override actions must be retained for accountability.
+
+---
+
+### 8.8 Penalties Collection
+
+The `penalties` collection will store penalties associated with students and borrowing requests.
+
+Fields:
+
+* `_id`
+* `requestId`
+* `studentId`
+* `itemId`
+* `reason`
+* `amount`
+* `status`
+* `remarks`
+* `createdAt`
+* `updatedAt`
+
+Penalty status values:
+
+* `pending`
+* `paid`
+* `waived`
+
+---
+
+### 8.9 Item History Collection
+
+The `item_history` collection will maintain inventory audit history.
+
+Fields:
+
+* `_id`
+* `itemId`
+* `requestId`
+* `studentId`
+* `action`
+* `previousQuantity`
+* `updatedQuantity`
+* `remarks`
+* `createdAt`
+
+This collection will be used to track borrowing, returning, quantity changes, damage, loss, and other inventory events.
+
+---
+
+### 8.10 MongoDB Relationships
+
+MongoDB will use ObjectId references for relationships between independently managed collections.
+
+Main relationships:
+
+* `users._id` → `borrow_requests.studentId`
+* `labs._id` → `inventory_items.labId`
+* `inventory_items._id` → `borrow_requests.items.itemId`
+* `borrow_requests._id` → `penalties.requestId`
+* `users._id` → `penalties.studentId`
+* `inventory_items._id` → `penalties.itemId`
+* `borrow_requests._id` → `override_logs.requestId`
+* `users._id` → `override_logs.adminId`
+* `inventory_items._id` → `item_history.itemId`
+* `borrow_requests._id` → `item_history.requestId`
+* `users._id` → `item_history.studentId`
+
+MongoDB indexes should be created for frequently searched fields such as:
+
+* User email
+* User role
+* Inventory asset code
+* Inventory lab ID
+* Borrow request student ID
+* Borrow request status
+* Borrow request creation date
+* Penalty student ID
+* Item history item ID
+
 
 ## 9. File System / Project Structure
 
@@ -638,18 +802,18 @@ The `client/` folder contains the frontend application.
 
 ### 9.3 Server File System
 
-The `server/` folder contains the backend API application.
+The `server/` folder contains the Express.js backend application.
 
-- `server/src/app.js`: Express app configuration, middleware setup, and route mounting.
-- `server/src/server.js`: Server startup file.
-- `server/src/config/database.js`: Database connection configuration.
-- `server/src/models/`: Sequelize models for users, labs, inventory items, requests, documents, approvals, history, and penalties.
-- `server/src/controllers/`: Business logic for each API feature.
-- `server/src/routes/`: API route definitions grouped by feature.
-- `server/src/middleware/`: Authentication, upload handling, and error handling middleware.
-- `server/src/services/`: Shared backend services such as email notifications.
-- `server/src/scripts/`: Database sync and seed scripts.
-- `server/src/utils/`: Shared utility functions and constants.
+* `server/src/app.js`: Express app configuration, middleware setup, and route mounting.
+* `server/src/server.js`: Server startup file.
+* `server/src/config/database.js`: MongoDB connection configuration.
+* `server/src/models/`: Mongoose schemas and models for users, labs, inventory items, borrowing requests, penalties, overrides, and item history.
+* `server/src/controllers/`: Business logic for each API feature.
+* `server/src/routes/`: API route definitions grouped by feature.
+* `server/src/middleware/`: Authentication, upload handling, and error handling middleware.
+* `server/src/services/`: Shared backend services such as email notifications.
+* `server/src/scripts/`: Database connection, seed, and initialization scripts.
+* `server/src/utils/`: Shared utility functions and constants.
 
 ### 9.4 Upload File System
 

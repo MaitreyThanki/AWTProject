@@ -7,7 +7,7 @@ Corrently in devlopment
 
 - React + Vite frontend
 - Express.js backend
-- MySQL database
+- MongoDB
 - Sequelize ORM
 - JWT authentication
 - Multer document uploads
