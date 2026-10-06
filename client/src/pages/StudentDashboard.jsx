@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import MetricCard from "../components/MetricCard.jsx";
 import { RefreshCcw, History } from "lucide-react";
 import { Link } from "react-router-dom";
-import axios from "axios";
+import { api } from "../api/http.js";
 
 export default function StudentDashboard() {
   const [history, setHistory] = useState([]);
@@ -11,7 +11,7 @@ export default function StudentDashboard() {
   useEffect(() => {
     const fetchHistory = async () => {
       try {
-        const response = await axios.get("/api/requests");
+        const response = await api.get("/requests");
         setHistory(response.data);
       } catch (error) {
         console.error("Failed to load borrowing history:", error);
@@ -24,15 +24,11 @@ export default function StudentDashboard() {
   }, []);
 
   const handleGetAgain = (request) => {
-    /*
-      The request data is saved temporarily so the
-      Inventory page can use it later for a repeat request.
-    */
     localStorage.setItem(
       "repeatRequest",
       JSON.stringify({
         requestId: request.id,
-        items: request.BorrowRequestItems || []
+        items: request.BorrowRequestItems || [],
       })
     );
   };
@@ -48,7 +44,6 @@ export default function StudentDashboard() {
         </div>
       </div>
 
-      {/* Dashboard Metrics */}
       <div className="metric-grid">
         <MetricCard label="Active Requests" value="0" />
         <MetricCard label="Approved Items" value="0" />
@@ -56,7 +51,6 @@ export default function StudentDashboard() {
         <MetricCard label="Penalties" value="0" />
       </div>
 
-      {/* Borrowing History */}
       <div className="history-section">
         <div className="section-header">
           <div className="section-title">
@@ -65,7 +59,8 @@ export default function StudentDashboard() {
           </div>
 
           <span className="history-count">
-            {history.length} {history.length === 1 ? "request" : "requests"}
+            {history.length}{" "}
+            {history.length === 1 ? "request" : "requests"}
           </span>
         </div>
 
@@ -93,7 +88,9 @@ export default function StudentDashboard() {
                     <p>
                       Requested on{" "}
                       {request.createdAt
-                        ? new Date(request.createdAt).toLocaleDateString()
+                        ? new Date(
+                            request.createdAt
+                          ).toLocaleDateString()
                         : "N/A"}
                     </p>
 
@@ -106,7 +103,9 @@ export default function StudentDashboard() {
 
                 <div className="history-actions">
                   <span
-                    className={`history-status status-${request.status}`}
+                    className={`history-status status-${(
+                      request.status || "pending"
+                    ).toLowerCase()}`}
                   >
                     {request.status || "Pending"}
                   </span>
