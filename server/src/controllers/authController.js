@@ -1,51 +1,80 @@
-import bcrypt from "bcryptjs";
+import User from "../models/User.js";
+import speakeasy from "speakeasy";
 import jwt from "jsonwebtoken";
-import { User } from "../models/index.js";
+import speakeasy from "speakeasy";
+import { decryptSecret } from "../utils/crypto.js";
 
-function createToken(user) {
-  return jwt.sign(
-    { id: user.id, email: user.email, role: user.role, name: user.name },
-    process.env.JWT_SECRET || "change_this_secret",
-    { expiresIn: process.env.JWT_EXPIRES_IN || "1d" }
-  );
-}
-
-export async function registerStudent(req, res, next) {
+export async function adminLogin(req, res) {
   try {
-    const { name, email, phone, universityProgram, residenceType, password } = req.body;
-    const passwordHash = await bcrypt.hash(password, 10);
+    const { email, otp } = req.body;
 
-    const user = await User.create({
-      name,
-      email,
-      phone,
-      universityProgram,
-      residenceType,
-      passwordHash,
-      role: "student"
-    });
-
-    res.status(201).json({ token: createToken(user), user: { id: user.id, name, email, role: user.role } });
-  } catch (error) {
-    next(error);
-  }
-}
-
-export async function login(req, res, next) {
-  try {
-    const { email, password, role } = req.body;
-    const user = await User.findOne({ where: { email, role } });
-
-    if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
-      return res.status(401).json({ message: "Invalid login details" });
+    if (!email || !otp) {
+      return res.status(400).json({
+        message: "Email and authenticator code are required",
+      });
     }
 
+    const adminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+    const submittedEmail = String(email).trim().toLowerCase();
+    const secret = process.env.ADMIN_TOTP_SECRET;
+    const jwtSecret = process.env.JWT_SECRET;
+
+    if (!adminEmail || !secret || !jwtSecret) {
+      console.error("Admin authentication environment is incomplete");
+
+      return res.status(500).json({
+        message: "Administrator authentication is not configured",
+      });
+    }
+
+    if (submittedEmail !== adminEmail) {
+      return res.status(401).json({
+        message: "Invalid login details",
+      });
+    }
+
+    const validOtp = speakeasy.totp.verify({
+      secret,
+      encoding: "base32",
+      token: String(otp),
+      window: 1,
+    });
+
+    if (!validOtp) {
+      return res.status(401).json({
+        message: "Invalid login details",
+      });
+    }
+
+    const token = jwt.sign(
+      {
+        id: "configured-admin",
+        email: adminEmail,
+        role: "admin",
+        name: "Administrator",
+      },
+      jwtSecret,
+      {
+        expiresIn: "15m",
+        issuer: "inventory-management",
+        audience: "inventory-management-api",
+      }
+    );
+
     return res.json({
-      token: createToken(user),
-      user: { id: user.id, name: user.name, email: user.email, role: user.role }
+      message: "Administrator login successful",
+      token,
+      user: {
+        email: adminEmail,
+        role: "admin",
+        name: "Administrator",
+      },
     });
   } catch (error) {
-    return next(error);
+    console.error("Admin login failed:", error);
+
+    return res.status(500).json({
+      message: "Unable to process administrator login",
+    });
   }
 }
-

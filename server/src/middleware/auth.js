@@ -1,28 +1,36 @@
 import jwt from "jsonwebtoken";
 
-export function authenticate(req, res, next) {
+export function authenticateToken(req, res, next) {
   const header = req.headers.authorization;
-  const token = header?.startsWith("Bearer ") ? header.slice(7) : null;
 
-  if (!token) {
-    return res.status(401).json({ message: "Authentication required" });
+  if (!header?.startsWith("Bearer ")) {
+    return res.status(401).json({
+      message: "Authentication required",
+    });
   }
+
+  const token = header.slice(7);
 
   try {
-    req.user = jwt.verify(token, process.env.JWT_SECRET || "change_this_secret");
-    return next();
+    req.user = jwt.verify(token, process.env.JWT_SECRET, {
+      issuer: "inventory-management",
+      audience: "inventory-management-api",
+    });
+
+    next();
   } catch {
-    return res.status(401).json({ message: "Invalid or expired token" });
+    return res.status(401).json({
+      message: "Invalid or expired token",
+    });
   }
 }
 
-export function authorize(...roles) {
-  return (req, res, next) => {
-    if (!roles.includes(req.user?.role)) {
-      return res.status(403).json({ message: "Access denied" });
-    }
+export function requireAdmin(req, res, next) {
+  if (req.user?.role !== "admin") {
+    return res.status(403).json({
+      message: "Admin access required",
+    });
+  }
 
-    return next();
-  };
+  next();
 }
-
