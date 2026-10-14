@@ -1,78 +1,53 @@
 # Inventory Management System
 
-Basic full-stack skeleton for the lab inventory borrowing system described in
-`Inventory_Management_System_Documentation.md`.
-Corrently in devlopment
-## Stack
+Full-stack lab inventory and borrowing system.
 
+## Stack
 - React + Vite frontend
 - Express.js backend
-- MongoDB
-- Sequelize ORM
-- JWT authentication
-- Multer document uploads
+- MongoDB + Mongoose
+- JWT authentication and bcrypt password hashing
+- Multer document uploads to `server/uploads/`
 - Nodemailer email service placeholder
-
-## Project Structure
-
-```text
-client/          React frontend
-server/          Express API
-server/uploads/  Uploaded documents
-```
 
 ## Setup
 
-Install dependencies:
+Requirements: Node.js (LTS) and MongoDB Community Server or a MongoDB Atlas URI.
+
+Install dependencies from the repository root:
 
 ```bash
 npm install
-```
-
-Create the backend environment file:
-
-```bash
 cp server/.env.example server/.env
 ```
 
-Update `server/.env` with your MySQL username, password, and database name.
-Create the MySQL database manually before syncing:
+Set `MONGODB_URI` and a private `JWT_SECRET` in `server/.env`. Local default:
+`mongodb://127.0.0.1:27017/inventory_management`.
 
-```sql
-CREATE DATABASE inventory_management;
-```
-
-Sync tables:
+Initialize MongoDB indexes and seed demo data:
 
 ```bash
 npm run db:sync --workspace server
-```
-
-Optional seed data:
-
-```bash
 npm run db:seed --workspace server
 ```
 
-Run both frontend and backend:
+Start both frontend and backend:
 
 ```bash
 npm run dev
 ```
 
-Frontend: `http://localhost:5173`
+Frontend: http://localhost:5173  
+Backend health check: http://localhost:5000/health
 
-Backend health check: `http://localhost:5000/health`
-
-## Starter Accounts
-
-Created only after running the seed command:
-
+## Demo accounts
+Created only after seeding:
 - Admin: `admin@example.edu` / `admin123`
 - Faculty: `faculty.makers@example.edu` / `faculty123`
 
-## Main API Groups
+Change demo credentials and JWT secret before deploying.
 
+## Main API groups
 - `POST /api/auth/student/register`
 - `POST /api/auth/login`
 - `GET /api/items`
