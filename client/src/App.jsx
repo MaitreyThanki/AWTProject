@@ -7,6 +7,8 @@ import AdminDashboard from "./pages/AdminDashboard.jsx";
 import InventoryPage from "./pages/InventoryPage.jsx";
 import RequestsPage from "./pages/RequestsPage.jsx";
 import PenaltiesPage from "./pages/PenaltiesPage.jsx";
+import AdminLoginPage from "./pages/AdminLoginPage.jsx";
+
 import React from "react";
 
 export default function App() {
@@ -22,6 +24,7 @@ export default function App() {
           <Route path="/inventory" element={<InventoryPage />} />
           <Route path="/requests" element={<RequestsPage />} />
           <Route path="/penalties" element={<PenaltiesPage />} />
+          <Route path="/admin-login" element={<AdminLoginPage/>} />
         </Route>
       </Routes>
     </BrowserRouter>
