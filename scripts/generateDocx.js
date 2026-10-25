@@ -65,15 +65,51 @@ function createReportDocument() {
       ]
     });
 
-  const diagramPlaceholder = (title, hint) =>
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      spacing: { before: 200, after: 200 },
-      children: [
-        new TextRun({ text: `[UML DIAGRAM: ${title}]`, bold: true, size: 24, color: "8D2F1E", font: "Calibri" }),
-        new TextRun({ text: `\n(${hint})`, italics: true, size: 20, color: "666666", font: "Calibri" })
-      ]
-    });
+  const embeddedDiagram = (filename, caption, width = 500, height = 350) => {
+    const filePath = path.resolve(`assets/diagrams/${filename}`);
+    if (fs.existsSync(filePath)) {
+      const imgBuffer = fs.readFileSync(filePath);
+      return [
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 180, after: 100 },
+          children: [
+            new ImageRun({
+              data: imgBuffer,
+              transformation: {
+                width,
+                height
+              }
+            })
+          ]
+        }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 220 },
+          children: [
+            new TextRun({
+              text: caption,
+              bold: true,
+              italics: true,
+              size: 20,
+              font: "Calibri",
+              color: "5C381E"
+            })
+          ]
+        })
+      ];
+    } else {
+      return [
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 150, after: 150 },
+          children: [
+            new TextRun({ text: `[DIAGRAM: ${caption}]`, bold: true, size: 22, color: "8D2F1E", font: "Calibri" })
+          ]
+        })
+      ];
+    }
+  };
 
   const embeddedScreenshot = (filename, caption) => {
     const filePath = path.resolve(`assets/screenshots/${filename}`);
@@ -269,93 +305,107 @@ function createReportDocument() {
               }),
               new TableRow({
                 children: [
-                  new TableCell({ children: [p("1")] }),
+                  new TableCell({ children: [p("2.1")] }),
                   new TableCell({ children: [p("Use Case Diagram (Student, Faculty, Admin Actor Interactions)")] }),
+                  new TableCell({ children: [p("18")] })
+                ]
+              }),
+              new TableRow({
+                children: [
+                  new TableCell({ children: [p("2.2")] }),
+                  new TableCell({ children: [p("Activity Diagram (Equipment Requisition, Approval & Return Workflow)")] }),
+                  new TableCell({ children: [p("19")] })
+                ]
+              }),
+              new TableRow({
+                children: [
+                  new TableCell({ children: [p("2.3")] }),
+                  new TableCell({ children: [p("Sequence Diagram (Checkout, Approval, Stock Deduction & Reminders)")] }),
+                  new TableCell({ children: [p("20")] })
+                ]
+              }),
+              new TableRow({
+                children: [
+                  new TableCell({ children: [p("2.4")] }),
+                  new TableCell({ children: [p("Entity-Relationship (ER) Diagram (MongoDB Collections & Cardinality)")] }),
+                  new TableCell({ children: [p("21")] })
+                ]
+              }),
+              new TableRow({
+                children: [
+                  new TableCell({ children: [p("2.5")] }),
+                  new TableCell({ children: [p("Data Flow Diagram Level 0 (System Context Diagram)")] }),
                   new TableCell({ children: [p("22")] })
                 ]
               }),
               new TableRow({
                 children: [
-                  new TableCell({ children: [p("2")] }),
-                  new TableCell({ children: [p("Activity Diagram (Equipment Requisition, Approval & Return Workflow)")] }),
+                  new TableCell({ children: [p("2.6")] }),
+                  new TableCell({ children: [p("Data Flow Diagram Level 1 (Functional Decomposition & Process Engines)")] }),
                   new TableCell({ children: [p("23")] })
                 ]
               }),
               new TableRow({
                 children: [
-                  new TableCell({ children: [p("3")] }),
-                  new TableCell({ children: [p("Sequence Diagram (Checkout, Approval, Stock Deduction & Handover)")] }),
+                  new TableCell({ children: [p("2.7")] }),
+                  new TableCell({ children: [p("Three-Tier Software Architecture Diagram (Client, Server & Database)")] }),
                   new TableCell({ children: [p("24")] })
                 ]
               }),
               new TableRow({
                 children: [
-                  new TableCell({ children: [p("4")] }),
-                  new TableCell({ children: [p("Entity-Relationship (ER) Diagram / MongoDB Document Schema Model)")] }),
+                  new TableCell({ children: [p("3.1")] }),
+                  new TableCell({ children: [p("Unified Student & Faculty Login and Student Sign-Up Interface")] }),
                   new TableCell({ children: [p("25")] })
                 ]
               }),
               new TableRow({
                 children: [
-                  new TableCell({ children: [p("5")] }),
-                  new TableCell({ children: [p("Data Flow Diagram (DFD Level 0 Context & Level 1 Decomposition)")] }),
+                  new TableCell({ children: [p("3.2")] }),
+                  new TableCell({ children: [p("Administrator Authenticator (6-digit TOTP) Login Portal")] }),
                   new TableCell({ children: [p("26")] })
                 ]
               }),
               new TableRow({
                 children: [
-                  new TableCell({ children: [p("6")] }),
-                  new TableCell({ children: [p("Unified Student & Faculty Login and Student Sign-Up Interface")] }),
+                  new TableCell({ children: [p("3.3")] }),
+                  new TableCell({ children: [p("Student Dashboard with Active Metrics & Borrowing History")] }),
                   new TableCell({ children: [p("27")] })
                 ]
               }),
               new TableRow({
                 children: [
-                  new TableCell({ children: [p("7")] }),
-                  new TableCell({ children: [p("Administrator Authenticator (6-digit TOTP) Login Portal")] }),
+                  new TableCell({ children: [p("3.4")] }),
+                  new TableCell({ children: [p("Lab Equipment Inventory Catalog with Availability Progress Meters")] }),
                   new TableCell({ children: [p("28")] })
                 ]
               }),
               new TableRow({
                 children: [
-                  new TableCell({ children: [p("8")] }),
-                  new TableCell({ children: [p("Student Dashboard with Active Metrics & Borrowing History")] }),
+                  new TableCell({ children: [p("3.5")] }),
+                  new TableCell({ children: [p("Requisition & Document Upload Checkout Modal")] }),
                   new TableCell({ children: [p("29")] })
                 ]
               }),
               new TableRow({
                 children: [
-                  new TableCell({ children: [p("9")] }),
-                  new TableCell({ children: [p("Lab Equipment Inventory Catalog with Availability Progress Meters")] }),
+                  new TableCell({ children: [p("3.6")] }),
+                  new TableCell({ children: [p("Faculty Approval Dashboard, Handover & Return Verification")] }),
                   new TableCell({ children: [p("30")] })
                 ]
               }),
               new TableRow({
                 children: [
-                  new TableCell({ children: [p("10")] }),
-                  new TableCell({ children: [p("Requisition & Document Upload Checkout Modal")] }),
+                  new TableCell({ children: [p("3.7")] }),
+                  new TableCell({ children: [p("Administrator Decision Override Panel & Audit Trail Log")] }),
                   new TableCell({ children: [p("31")] })
                 ]
               }),
               new TableRow({
                 children: [
-                  new TableCell({ children: [p("11")] }),
-                  new TableCell({ children: [p("Faculty Approval Dashboard, Handover & Return Verification")] }),
-                  new TableCell({ children: [p("32")] })
-                ]
-              }),
-              new TableRow({
-                children: [
-                  new TableCell({ children: [p("12")] }),
-                  new TableCell({ children: [p("Administrator Decision Override Panel & Audit Trail Log")] }),
-                  new TableCell({ children: [p("33")] })
-                ]
-              }),
-              new TableRow({
-                children: [
-                  new TableCell({ children: [p("13")] }),
+                  new TableCell({ children: [p("3.8")] }),
                   new TableCell({ children: [p("Penalties & Overdue Violation Management Interface")] }),
-                  new TableCell({ children: [p("34")] })
+                  new TableCell({ children: [p("32")] })
                 ]
               })
             ]
@@ -546,27 +596,35 @@ function createReportDocument() {
           bullet("Performance: Sub-second query execution through indexed MongoDB collections (`studentId`, `labId`, `assetCode`, `status`)."),
 
           heading2("2.6 UML Diagrams & System Modeling"),
-          p("To formally represent the architecture, behavior, and data flow of the system, five standard UML modeling diagrams were constructed:"),
+          p("To formally represent the architecture, behavior, and data flow of the system, comprehensive UML modeling diagrams and architectural blueprints were constructed:"),
 
           heading3("2.6.1 Use Case Diagram"),
           p("Depicts the interactions between the primary external actors (Student, Faculty In-Charge, System Administrator) and the functional boundaries of the system."),
-          diagramPlaceholder("Figure 1: Use Case Diagram", "Insert exported Use Case diagram image from PlantUML / Mermaid code"),
+          ...embeddedDiagram("fig1_use_case.png", "Figure 2.1: Use Case Diagram (Actor-System Functional Interactions)", 400, 530),
 
           heading3("2.6.2 Activity Diagram"),
           p("Models the chronological business workflow from student item search, cart requisition, document attachment, faculty decision, physical issuance, and return verification."),
-          diagramPlaceholder("Figure 2: Activity Diagram", "Insert exported Activity Diagram image from Mermaid code"),
+          ...embeddedDiagram("fig2_activity.png", "Figure 2.2: Activity Diagram (Equipment Requisition, Approval, Issuance & Return Lifecycle)", 260, 660),
 
           heading3("2.6.3 Sequence Diagram"),
           p("Illustrates the time-ordered message exchange between Client UI, Authentication Controller, Request Service, and MongoDB Database during checkout and approval."),
-          diagramPlaceholder("Figure 3: Sequence Diagram", "Insert exported Sequence Diagram image from Mermaid code"),
+          ...embeddedDiagram("fig3_sequence.png", "Figure 2.3: Sequence Diagram (Requisition, Approval, Stock Deduction & Scheduled Reminders)", 500, 400),
 
           heading3("2.6.4 Entity-Relationship (ER) Diagram"),
           p("Represents the logical data model, document collections, embedded sub-documents, and ObjectId references across Users, Labs, InventoryItems, BorrowRequests, OverrideLogs, and Penalties."),
-          diagramPlaceholder("Figure 4: ER Diagram", "Insert exported ER Diagram image from Mermaid code"),
+          ...embeddedDiagram("fig4_er_diagram.png", "Figure 2.4: Entity-Relationship (ER) Diagram (MongoDB Collections, Schemas & Cardinality)", 500, 470),
 
-          heading3("2.6.5 Data Flow Diagram (DFD Level 0 & Level 1)"),
-          p("Depicts the flow of data across system boundaries, transformations through functional controllers, and persistence into MongoDB storage collections."),
-          diagramPlaceholder("Figure 5: Data Flow Diagram", "Insert exported DFD diagram image from Mermaid code"),
+          heading3("2.6.5 Data Flow Diagram Level 0 (Context Diagram)"),
+          p("Depicts the flow of information across external human entities, internal processing pipelines, the cloud persistence layer, and the background notification service."),
+          ...embeddedDiagram("fig5_dfd_level0.png", "Figure 2.5: Data Flow Diagram Level 0 (System Context Diagram)", 500, 288),
+
+          heading3("2.6.6 Data Flow Diagram Level 1 (Functional Decomposition)"),
+          p("Decomposes the core system into discrete operational sub-engines (Authentication, Inventory Catalog, Requisition Processing, Approval & Handover, Governance Override, and Deadline Assessment)."),
+          ...embeddedDiagram("fig6_dfd_level1.png", "Figure 2.6: Data Flow Diagram Level 1 (Functional Decomposition & Process Engines)", 520, 160),
+
+          heading3("2.6.7 Three-Tier Software Architecture Diagram"),
+          p("Illustrates the multi-tiered architecture of the system, comprising the React/Vite Presentation Tier, the Node.js/Express Business Logic & API Tier with middleware and background schedulers, and the MongoDB Atlas Cloud Persistence Tier."),
+          ...embeddedDiagram("fig7_architecture.png", "Figure 2.7: Three-Tier Software Architecture Diagram (Presentation, Logic & Database Layers)", 400, 540),
 
           // ==================== CHAPTER 3: IMPLEMENTATION (WITH EMBEDDED SCREENSHOTS) ====================
           pageBreak(),
@@ -575,35 +633,35 @@ function createReportDocument() {
 
           heading2("3.1 Unified Login & Student Registration Interface"),
           p("Provides a unified sign-in portal for Students and Faculty, along with an interactive Student Registration tab collecting student name, university email, phone number, program, semester, division, stay type, and encrypted password."),
-          ...embeddedScreenshot("fig6_login.png", "Figure 6: Unified Student & Faculty Sign In and Student Registration Page"),
+          ...embeddedScreenshot("fig6_login.png", "Figure 3.1: Unified Student & Faculty Sign In and Student Registration Page"),
 
           heading2("3.2 Administrator Authenticator (TOTP) Portal"),
           p("Implements a secure administrative gateway requiring university admin credentials and a live 6-digit Time-Based One-Time Password generated from an authenticator app (Google Authenticator / Microsoft Authenticator)."),
-          ...embeddedScreenshot("fig7_admin_login.png", "Figure 7: Administrator Authenticator (6-digit TOTP) Login Portal"),
+          ...embeddedScreenshot("fig7_admin_login.png", "Figure 3.2: Administrator Authenticator (6-digit TOTP) Login Portal"),
 
           heading2("3.3 Student Dashboard & Borrowing History"),
           p("Displays real-time student metrics (Active Requests, Approved Items, Due Soon, Penalties Due) aggregated directly from MongoDB, alongside complete borrowing records and a 'Get Again' quick re-order action."),
-          ...embeddedScreenshot("fig8_student_dashboard.png", "Figure 8: Student Dashboard with Live Metrics & Borrowing History"),
+          ...embeddedScreenshot("fig8_student_dashboard.png", "Figure 3.3: Student Dashboard with Live Metrics & Borrowing History"),
 
           heading2("3.4 Lab Equipment Inventory Catalog"),
           p("Showcases lab equipment divided by Makers Lab 2 and Design IoT Lab. Each equipment card features category tags, condition ratings, max allowed borrow duration, faculty in-charge email, and an active availability progress meter."),
-          ...embeddedScreenshot("fig9_inventory.png", "Figure 9: Lab Equipment Inventory Browsing with Availability Meters"),
+          ...embeddedScreenshot("fig9_inventory.png", "Figure 3.4: Lab Equipment Inventory Browsing with Availability Meters"),
 
           heading2("3.5 Requisition Checkout & Document Upload Modal"),
           p("Enables students to specify required item quantities, define expected return dates, state project purpose, and upload supporting letters (PDF/PNG up to 5MB) via multipart form upload."),
-          ...embeddedScreenshot("fig10_requisition_modal.png", "Figure 10: Requisition & Document Upload Checkout Modal"),
+          ...embeddedScreenshot("fig10_requisition_modal.png", "Figure 3.5: Requisition & Document Upload Checkout Modal"),
 
           heading2("3.6 Faculty Approval & Handover Panel"),
           p("Provides laboratory faculty with a live queue of pending requests, applicant roll numbers, purpose descriptions, and attached documents. Faculty can approve or reject with remarks, confirm physical handover (decrementing inventory), and verify returns."),
-          ...embeddedScreenshot("fig11_faculty_dashboard.png", "Figure 11: Faculty Approval Dashboard, Equipment Handover & Return Verification"),
+          ...embeddedScreenshot("fig11_faculty_dashboard.png", "Figure 3.6: Faculty Approval Dashboard, Equipment Handover & Return Verification"),
 
           heading2("3.7 Administrator Decision Override & Audit Trail"),
           p("Allows administrators to supervise both labs, override faculty decisions with mandatory justifications, inspect audit trails in the override log, and provision new faculty accounts with auto-generated passwords."),
-          ...embeddedScreenshot("fig12_admin_dashboard.png", "Figure 12: Administrator Decision Override Panel & Audit Trail Log"),
+          ...embeddedScreenshot("fig12_admin_dashboard.png", "Figure 3.7: Administrator Decision Override Panel & Audit Trail Log"),
 
           heading2("3.8 Penalties & Overdue Violation Management"),
           p("Monitors outstanding dues, calculates daily late return fines and equipment damage charges, and enables administrators to record payments or grant official waivers."),
-          ...embeddedScreenshot("fig13_penalties.png", "Figure 13: Penalties & Overdue Violation Management Interface"),
+          ...embeddedScreenshot("fig13_penalties.png", "Figure 3.8: Penalties & Overdue Violation Management Interface"),
 
           // ==================== CHAPTER 4: OBSERVATIONS ====================
           pageBreak(),
@@ -647,14 +705,28 @@ function createReportDocument() {
 async function main() {
   const doc = createReportDocument();
   const buffer = await Packer.toBuffer(doc);
+  let written = false;
   try {
     fs.writeFileSync("Lab_Inventory_Management_System_Project_Report.docx", buffer);
-    console.log("Updated Lab_Inventory_Management_System_Project_Report.docx");
+    console.log("Successfully wrote Lab_Inventory_Management_System_Project_Report.docx");
+    written = true;
   } catch (e) {
-    console.warn("Primary docx file is open in Word, saving to new version...");
+    console.warn("Primary docx file is locked in Word, checking secondary file...");
   }
-  fs.writeFileSync("Lab_Inventory_Management_System_Project_Report_With_Screenshots.docx", buffer);
-  console.log("Successfully generated Lab_Inventory_Management_System_Project_Report_With_Screenshots.docx with embedded screenshots!");
+
+  try {
+    fs.writeFileSync("Lab_Inventory_Management_System_Project_Report_With_Screenshots.docx", buffer);
+    console.log("Successfully wrote Lab_Inventory_Management_System_Project_Report_With_Screenshots.docx");
+    written = true;
+  } catch (e) {
+    console.warn("Secondary docx file is locked in Word.");
+  }
+
+  if (!written) {
+    const timestampedName = `Lab_Inventory_Management_System_Project_Report_${Date.now()}.docx`;
+    fs.writeFileSync(timestampedName, buffer);
+    console.log(`Both files were locked, wrote to ${timestampedName}`);
+  }
 }
 
 main().catch(console.error);
