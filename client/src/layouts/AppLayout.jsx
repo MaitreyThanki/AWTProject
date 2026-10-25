@@ -1,10 +1,22 @@
 import React from "react";
-import { Boxes, ClipboardList, Gauge, LogIn, LogOut, ShieldAlert, WalletCards, UserCheck } from "lucide-react";
-import { Link, Outlet, useNavigate } from "react-router-dom";
+import {
+  Boxes,
+  ClipboardList,
+  Gauge,
+  LogIn,
+  LogOut,
+  ShieldAlert,
+  WalletCards,
+  UserCheck,
+  Compass
+} from "lucide-react";
+import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 
 export default function AppLayout() {
   const navigate = useNavigate();
+  const location = useLocation();
   const token = localStorage.getItem("token");
+
   let user = null;
   try {
     user = JSON.parse(localStorage.getItem("user") || "null");
@@ -32,41 +44,65 @@ export default function AppLayout() {
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <div className="brand">Lab Inventory</div>
-        <nav className="nav flex-column gap-1">
-          {links.map(({ to, label, icon: Icon }) => (
-            <Link key={to} className="nav-link" to={to}>
-              <Icon size={18} />
-              <span>{label}</span>
-            </Link>
-          ))}
-          {!token ? (
-            <Link className="nav-link" to="/login">
-              <LogIn size={18} />
-              <span>Login</span>
-            </Link>
-          ) : (
-            <button
-              type="button"
-              className="nav-link"
-              onClick={handleLogout}
-              style={{ background: "none", border: "none", cursor: "pointer", width: "100%", textAlign: "left" }}
-            >
-              <LogOut size={18} />
-              <span>Logout</span>
-            </button>
-          )}
-        </nav>
+        <div>
+          <div className="brand">
+            <div className="brand-icon">
+              <Compass size={22} color="var(--white)" />
+            </div>
+            <div>
+              <span style={{ display: "block", fontSize: "1.05rem" }}>Lab Inventory</span>
+              <span style={{ fontSize: "0.72rem", opacity: 0.7, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 500 }}>
+                Equipment Portal
+              </span>
+            </div>
+          </div>
+
+          <nav className="nav">
+            {links.map(({ to, label, icon: Icon }) => {
+              const isActive = location.pathname === to;
+              return (
+                <Link
+                  key={to}
+                  className={`nav-link ${isActive ? "active" : ""}`}
+                  to={to}
+                >
+                  <Icon size={19} />
+                  <span>{label}</span>
+                </Link>
+              );
+            })}
+
+            {!token ? (
+              <Link className="nav-link" to="/login">
+                <LogIn size={19} />
+                <span>Sign In</span>
+              </Link>
+            ) : (
+              <button
+                type="button"
+                className="nav-link nav-logout-btn"
+                onClick={handleLogout}
+              >
+                <LogOut size={19} />
+                <span>Sign Out</span>
+              </button>
+            )}
+          </nav>
+        </div>
 
         {user && (
           <div className="user-badge">
-            <div>
-              <strong style={{ display: "block" }}>{user.name}</strong>
-              <span style={{ textTransform: "capitalize", opacity: 0.85 }}>{user.role}</span>
+            <div className="user-avatar">
+              {user.name ? user.name.charAt(0).toUpperCase() : "U"}
+            </div>
+            <div className="user-info">
+              <strong>{user.name}</strong>
+              <span>{user.role}</span>
             </div>
           </div>
         )}
       </aside>
+
       <main className="content">
         <Outlet />
       </main>

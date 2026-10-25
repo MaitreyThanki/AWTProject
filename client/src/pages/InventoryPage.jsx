@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { api } from "../api/http.js";
-import { Plus, Search, Filter, CheckCircle, Upload, Boxes } from "lucide-react";
+import { Plus, Search, CheckCircle, Boxes, Tag, Shield, Clock, Send } from "lucide-react";
 
 export default function InventoryPage() {
   const [items, setItems] = useState([]);
@@ -151,19 +151,19 @@ export default function InventoryPage() {
     <section>
       <div className="section-header">
         <div>
-          <h1>Lab Inventory</h1>
-          <p className="dashboard-subtitle">Browse and request equipment across lab facilities</p>
+          <h1>Lab Equipment Inventory</h1>
+          <p className="dashboard-subtitle">Makers Lab 2 & Design IoT Lab — Search, check stock, and requisition</p>
         </div>
         {isPrivileged && (
           <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
-            <Plus size={16} /> Add Inventory Item
+            <Plus size={16} /> Add Equipment
           </button>
         )}
       </div>
 
       {message && (
-        <div style={{ background: "#DDE9D8", color: "#385A2E", padding: "12px 16px", borderRadius: "8px", marginBottom: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
-          <CheckCircle size={18} /> {message}
+        <div style={{ background: "var(--success-bg)", color: "var(--success-text)", border: "1px solid #C4DCBE", padding: "14px 18px", borderRadius: "var(--radius-md)", marginBottom: "20px", display: "flex", alignItems: "center", gap: "10px", fontWeight: 500 }}>
+          <CheckCircle size={20} /> {message}
         </div>
       )}
 
@@ -186,22 +186,22 @@ export default function InventoryPage() {
         ))}
       </div>
 
-      {/* Filter & Search Bar */}
-      <div style={{ display: "flex", gap: "12px", marginBottom: "20px", flexWrap: "wrap" }}>
-        <div style={{ display: "flex", alignItems: "center", background: "var(--white)", border: "1px solid var(--border)", borderRadius: "8px", padding: "0 12px", flex: 1, minWidth: "220px" }}>
+      {/* Search & Filter Controls */}
+      <div style={{ display: "flex", gap: "14px", marginBottom: "24px", flexWrap: "wrap", alignItems: "center" }}>
+        <div style={{ display: "flex", alignItems: "center", background: "var(--white)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "0 14px", flex: 1, minWidth: "260px", boxShadow: "var(--shadow-sm)" }}>
           <Search size={18} color="var(--muted)" />
           <input
             type="text"
-            placeholder="Search items, asset code..."
+            placeholder="Search items by name, asset code, or description..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            style={{ border: "none", outline: "none", padding: "9px 10px", width: "100%", fontFamily: "inherit" }}
+            style={{ border: "none", outline: "none", padding: "11px 12px", width: "100%", fontFamily: "inherit", fontSize: "0.92rem", background: "transparent" }}
           />
         </div>
 
         <select
           className="form-select"
-          style={{ width: "auto", minWidth: "180px" }}
+          style={{ width: "auto", minWidth: "190px", height: "42px", boxShadow: "var(--shadow-sm)" }}
           value={selectedCategory}
           onChange={(e) => setSelectedCategory(e.target.value)}
         >
@@ -215,52 +215,81 @@ export default function InventoryPage() {
 
       {/* Inventory Grid */}
       {loading ? (
-        <div className="empty-state">Loading lab inventory...</div>
+        <div className="empty-state">Loading lab equipment...</div>
       ) : items.length === 0 ? (
         <div className="empty-state">
-          <Boxes size={32} />
-          <p>No inventory items found matching your filters.</p>
+          <Boxes size={36} color="var(--muted)" />
+          <p style={{ margin: 0, fontWeight: 500 }}>No equipment matches your search or filter criteria.</p>
         </div>
       ) : (
         <div className="inventory-grid">
-          {items.map((item) => (
-            <div className="inventory-card" key={item._id}>
-              <div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px" }}>
-                  <span className="badge badge-warning">{item.labId?.name || "Lab Item"}</span>
-                  <span className={`badge ${item.availableQuantity > 0 ? "badge-success" : "badge-danger"}`}>
-                    {item.availableQuantity > 0 ? `${item.availableQuantity} / ${item.totalQuantity} Available` : "Out of Stock"}
-                  </span>
-                </div>
-                <h3 style={{ margin: "4px 0", color: "var(--accent)" }}>{item.name}</h3>
-                <p style={{ fontSize: "0.8rem", color: "var(--muted)", margin: "2px 0 8px" }}>Asset: {item.assetCode} • {item.category}</p>
-                <p style={{ fontSize: "0.85rem", color: "var(--ink)", margin: "6px 0 14px", lineHeight: 1.4 }}>
-                  {item.description || "No description provided."}
-                </p>
-                <div style={{ fontSize: "0.8rem", color: "var(--muted)", borderTop: "1px solid var(--border)", paddingTop: "8px" }}>
-                  <div>Max Borrow: {item.borrowDurationDays || 7} days</div>
-                  <div>In-Charge: {item.labId?.facultyInchargeEmail || "faculty@university.edu"}</div>
-                </div>
-              </div>
+          {items.map((item) => {
+            const percentage = item.totalQuantity > 0 ? (item.availableQuantity / item.totalQuantity) * 100 : 0;
+            const meterColor = percentage > 50 ? "#346327" : percentage > 20 ? "#B8751E" : "#8D2F1E";
 
-              <div style={{ marginTop: "16px" }}>
-                <button
-                  className="btn btn-primary"
-                  style={{ width: "100%" }}
-                  disabled={item.availableQuantity <= 0 || user?.role !== "student"}
-                  onClick={() => {
-                    setRequestModalItem(item);
-                    setRequestQuantity(1);
-                    const defaultReturn = new Date();
-                    defaultReturn.setDate(defaultReturn.getDate() + (item.borrowDurationDays || 7));
-                    setExpectedReturnDate(defaultReturn.toISOString().split("T")[0]);
-                  }}
-                >
-                  {user?.role !== "student" ? "Students Only" : item.availableQuantity > 0 ? "Request to Borrow" : "Unavailable"}
-                </button>
+            return (
+              <div className="inventory-card" key={item._id}>
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
+                    <span className="badge badge-warning">
+                      <Tag size={12} /> {item.labId?.name || "Lab Item"}
+                    </span>
+                    <span className={`badge ${item.availableQuantity > 0 ? "badge-success" : "badge-danger"}`}>
+                      {item.availableQuantity > 0 ? `${item.availableQuantity} / ${item.totalQuantity} Available` : "Unavailable"}
+                    </span>
+                  </div>
+
+                  <h3>{item.name}</h3>
+                  <div style={{ fontSize: "0.82rem", color: "var(--muted)", display: "flex", gap: "10px", alignItems: "center" }}>
+                    <span><code>{item.assetCode}</code></span>
+                    <span>•</span>
+                    <span>{item.category}</span>
+                  </div>
+
+                  {/* Stock Availability Meter */}
+                  <div className="stock-meter-bar" title={`${percentage.toFixed(0)}% available in stock`}>
+                    <div
+                      className="stock-meter-fill"
+                      style={{
+                        width: `${percentage}%`,
+                        backgroundColor: meterColor
+                      }}
+                    />
+                  </div>
+
+                  <p style={{ fontSize: "0.88rem", color: "var(--ink)", margin: "0 0 16px", lineHeight: 1.45, opacity: 0.9 }}>
+                    {item.description || "Lab equipment component for coursework and project development."}
+                  </p>
+
+                  <div style={{ fontSize: "0.82rem", color: "var(--muted)", borderTop: "1px solid var(--page)", paddingTop: "12px", display: "flex", flexDirection: "column", gap: "4px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <Clock size={13} /> Allowed: <strong>{item.borrowDurationDays || 7} days</strong>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <Shield size={13} /> In-Charge: {item.labId?.facultyInchargeEmail || "faculty@university.edu"}
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ marginTop: "20px" }}>
+                  <button
+                    className="btn btn-primary"
+                    style={{ width: "100%" }}
+                    disabled={item.availableQuantity <= 0 || user?.role !== "student"}
+                    onClick={() => {
+                      setRequestModalItem(item);
+                      setRequestQuantity(1);
+                      const defaultReturn = new Date();
+                      defaultReturn.setDate(defaultReturn.getDate() + (item.borrowDurationDays || 7));
+                      setExpectedReturnDate(defaultReturn.toISOString().split("T")[0]);
+                    }}
+                  >
+                    {user?.role !== "student" ? "Students Only" : item.availableQuantity > 0 ? "Request to Borrow" : "Out of Stock"}
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -269,15 +298,15 @@ export default function InventoryPage() {
         <div className="modal-backdrop">
           <div className="modal-panel">
             <div className="modal-header">
-              <h2>Borrow Request</h2>
+              <h2>Borrow Equipment</h2>
               <button className="close-btn" onClick={() => setRequestModalItem(null)}>✕</button>
             </div>
 
             <form onSubmit={handleBorrowSubmit}>
-              <div style={{ background: "var(--page)", padding: "12px", borderRadius: "8px", marginBottom: "16px" }}>
-                <strong>{requestModalItem.name}</strong>
-                <div style={{ fontSize: "0.85rem", color: "var(--muted)" }}>
-                  Lab: {requestModalItem.labId?.name} | Available: {requestModalItem.availableQuantity}
+              <div style={{ background: "var(--page)", border: "1px solid var(--border)", padding: "14px", borderRadius: "var(--radius-md)", marginBottom: "18px" }}>
+                <strong style={{ fontSize: "1.05rem", color: "var(--accent)" }}>{requestModalItem.name}</strong>
+                <div style={{ fontSize: "0.85rem", color: "var(--muted)", marginTop: "4px" }}>
+                  Lab: {requestModalItem.labId?.name} | Available Quantity: <strong>{requestModalItem.availableQuantity}</strong>
                 </div>
               </div>
 
@@ -311,7 +340,7 @@ export default function InventoryPage() {
                 <textarea
                   className="form-control"
                   rows="3"
-                  placeholder="e.g. Project prototype development, coursework lab practical..."
+                  placeholder="e.g. Capstone project prototype, lab experiment practical..."
                   value={purpose}
                   onChange={(e) => setPurpose(e.target.value)}
                   required
@@ -319,7 +348,7 @@ export default function InventoryPage() {
               </label>
 
               <label className="form-label">
-                Approval / Permission Document (Optional, max 5MB PDF/PNG)
+                Approval / Permission Document (Optional, PDF or Image up to 5MB)
                 <input
                   className="form-control"
                   type="file"
@@ -328,12 +357,12 @@ export default function InventoryPage() {
                 />
               </label>
 
-              <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
+              <div style={{ display: "flex", gap: "12px", marginTop: "24px" }}>
                 <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setRequestModalItem(null)}>
                   Cancel
                 </button>
                 <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={submitting}>
-                  {submitting ? "Submitting..." : "Submit Request"}
+                  <Send size={15} /> {submitting ? "Submitting..." : "Submit Requisition"}
                 </button>
               </div>
             </form>
@@ -346,7 +375,7 @@ export default function InventoryPage() {
         <div className="modal-backdrop">
           <div className="modal-panel">
             <div className="modal-header">
-              <h2>Add Inventory Item</h2>
+              <h2>Add Equipment to Lab</h2>
               <button className="close-btn" onClick={() => setShowAddModal(false)}>✕</button>
             </div>
 
@@ -356,25 +385,25 @@ export default function InventoryPage() {
                 <input
                   className="form-control"
                   required
-                  placeholder="e.g. Arduino Mega 2560"
+                  placeholder="e.g. Raspberry Pi 4 Model B (8GB)"
                   value={newItemName}
                   onChange={(e) => setNewItemName(e.target.value)}
                 />
               </label>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
                 <label className="form-label">
                   Asset Code
                   <input
                     className="form-control"
                     required
-                    placeholder="e.g. ML2-ARD-009"
+                    placeholder="e.g. ML2-RPI-008"
                     value={newItemAssetCode}
                     onChange={(e) => setNewItemAssetCode(e.target.value)}
                   />
                 </label>
                 <label className="form-label">
-                  Lab
+                  Lab Location
                   <select
                     className="form-select"
                     value={newItemLabId}
@@ -387,7 +416,7 @@ export default function InventoryPage() {
                 </label>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
                 <label className="form-label">
                   Category
                   <select
@@ -404,7 +433,7 @@ export default function InventoryPage() {
                 </label>
 
                 <label className="form-label">
-                  Total Quantity
+                  Total Inventory Units
                   <input
                     className="form-control"
                     type="number"
@@ -417,22 +446,22 @@ export default function InventoryPage() {
               </div>
 
               <label className="form-label">
-                Description
+                Description / Notes
                 <textarea
                   className="form-control"
                   rows="2"
-                  placeholder="Specification and usage..."
+                  placeholder="Model specifications, accessories, or lab restrictions..."
                   value={newItemDesc}
                   onChange={(e) => setNewItemDesc(e.target.value)}
                 />
               </label>
 
-              <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
+              <div style={{ display: "flex", gap: "12px", marginTop: "24px" }}>
                 <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setShowAddModal(false)}>
                   Cancel
                 </button>
                 <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={submitting}>
-                  {submitting ? "Saving..." : "Add to Lab"}
+                  {submitting ? "Saving..." : "Add to Inventory"}
                 </button>
               </div>
             </form>
