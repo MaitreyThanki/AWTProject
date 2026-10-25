@@ -1,4 +1,5 @@
 import fs from "fs";
+import path from "path";
 import {
   Document,
   Paragraph,
@@ -9,8 +10,8 @@ import {
   TableRow,
   TableCell,
   WidthType,
-  BorderStyle,
-  Packer
+  Packer,
+  ImageRun
 } from "docx";
 
 function createReportDocument() {
@@ -69,10 +70,56 @@ function createReportDocument() {
       alignment: AlignmentType.CENTER,
       spacing: { before: 200, after: 200 },
       children: [
-        new TextRun({ text: `[INSERT IMAGE: ${title}]`, bold: true, size: 24, color: "8D2F1E", font: "Calibri" }),
+        new TextRun({ text: `[UML DIAGRAM: ${title}]`, bold: true, size: 24, color: "8D2F1E", font: "Calibri" }),
         new TextRun({ text: `\n(${hint})`, italics: true, size: 20, color: "666666", font: "Calibri" })
       ]
     });
+
+  const embeddedScreenshot = (filename, caption) => {
+    const filePath = path.resolve(`assets/screenshots/${filename}`);
+    if (fs.existsSync(filePath)) {
+      const imgBuffer = fs.readFileSync(filePath);
+      return [
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 180, after: 100 },
+          children: [
+            new ImageRun({
+              data: imgBuffer,
+              transformation: {
+                width: 540,
+                height: 330
+              }
+            })
+          ]
+        }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 220 },
+          children: [
+            new TextRun({
+              text: caption,
+              bold: true,
+              italics: true,
+              size: 20,
+              font: "Calibri",
+              color: "5C381E"
+            })
+          ]
+        })
+      ];
+    } else {
+      return [
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 150, after: 150 },
+          children: [
+            new TextRun({ text: `[SCREENSHOT: ${caption}]`, bold: true, size: 22, color: "8D2F1E", font: "Calibri" })
+          ]
+        })
+      ];
+    }
+  };
 
   const doc = new Document({
     sections: [
@@ -503,60 +550,60 @@ function createReportDocument() {
 
           heading3("2.6.1 Use Case Diagram"),
           p("Depicts the interactions between the primary external actors (Student, Faculty In-Charge, System Administrator) and the functional boundaries of the system."),
-          diagramPlaceholder("Figure 1: Use Case Diagram", "Insert exported Use Case diagram image here"),
+          diagramPlaceholder("Figure 1: Use Case Diagram", "Insert exported Use Case diagram image from PlantUML / Mermaid code"),
 
           heading3("2.6.2 Activity Diagram"),
           p("Models the chronological business workflow from student item search, cart requisition, document attachment, faculty decision, physical issuance, and return verification."),
-          diagramPlaceholder("Figure 2: Activity Diagram", "Insert exported Activity Diagram image here"),
+          diagramPlaceholder("Figure 2: Activity Diagram", "Insert exported Activity Diagram image from Mermaid code"),
 
           heading3("2.6.3 Sequence Diagram"),
           p("Illustrates the time-ordered message exchange between Client UI, Authentication Controller, Request Service, and MongoDB Database during checkout and approval."),
-          diagramPlaceholder("Figure 3: Sequence Diagram", "Insert exported Sequence Diagram image here"),
+          diagramPlaceholder("Figure 3: Sequence Diagram", "Insert exported Sequence Diagram image from Mermaid code"),
 
           heading3("2.6.4 Entity-Relationship (ER) Diagram"),
           p("Represents the logical data model, document collections, embedded sub-documents, and ObjectId references across Users, Labs, InventoryItems, BorrowRequests, OverrideLogs, and Penalties."),
-          diagramPlaceholder("Figure 4: ER Diagram", "Insert exported ER Diagram image here"),
+          diagramPlaceholder("Figure 4: ER Diagram", "Insert exported ER Diagram image from Mermaid code"),
 
           heading3("2.6.5 Data Flow Diagram (DFD Level 0 & Level 1)"),
           p("Depicts the flow of data across system boundaries, transformations through functional controllers, and persistence into MongoDB storage collections."),
-          diagramPlaceholder("Figure 5: Data Flow Diagram", "Insert exported DFD diagram image here"),
+          diagramPlaceholder("Figure 5: Data Flow Diagram", "Insert exported DFD diagram image from Mermaid code"),
 
-          // ==================== CHAPTER 3: IMPLEMENTATION ====================
+          // ==================== CHAPTER 3: IMPLEMENTATION (WITH EMBEDDED SCREENSHOTS) ====================
           pageBreak(),
           heading1("Chapter: 3 Implementation of Project"),
-          p("This chapter presents the user interfaces, page workflows, and operational capabilities implemented across the front-end and back-end stacks."),
+          p("This chapter presents the actual user interfaces, operational modules, and verified workflows developed across the presentation, logic, and database tiers."),
 
           heading2("3.1 Unified Login & Student Registration Interface"),
-          p("Provides a unified sign-in portal for Students and Faculty, along with a full Student Registration tab collecting student name, university email, phone number, program, semester, division, stay type, and encrypted password."),
-          diagramPlaceholder("Figure 6: Login & Student Registration Page", "Insert screenshot of /login page"),
+          p("Provides a unified sign-in portal for Students and Faculty, along with an interactive Student Registration tab collecting student name, university email, phone number, program, semester, division, stay type, and encrypted password."),
+          ...embeddedScreenshot("fig6_login.png", "Figure 6: Unified Student & Faculty Sign In and Student Registration Page"),
 
           heading2("3.2 Administrator Authenticator (TOTP) Portal"),
           p("Implements a secure administrative gateway requiring university admin credentials and a live 6-digit Time-Based One-Time Password generated from an authenticator app (Google Authenticator / Microsoft Authenticator)."),
-          diagramPlaceholder("Figure 7: Administrator TOTP Login Page", "Insert screenshot of /admin-login page"),
+          ...embeddedScreenshot("fig7_admin_login.png", "Figure 7: Administrator Authenticator (6-digit TOTP) Login Portal"),
 
           heading2("3.3 Student Dashboard & Borrowing History"),
           p("Displays real-time student metrics (Active Requests, Approved Items, Due Soon, Penalties Due) aggregated directly from MongoDB, alongside complete borrowing records and a 'Get Again' quick re-order action."),
-          diagramPlaceholder("Figure 8: Student Dashboard", "Insert screenshot of /student page"),
+          ...embeddedScreenshot("fig8_student_dashboard.png", "Figure 8: Student Dashboard with Live Metrics & Borrowing History"),
 
           heading2("3.4 Lab Equipment Inventory Catalog"),
           p("Showcases lab equipment divided by Makers Lab 2 and Design IoT Lab. Each equipment card features category tags, condition ratings, max allowed borrow duration, faculty in-charge email, and an active availability progress meter."),
-          diagramPlaceholder("Figure 9: Inventory Browsing Page", "Insert screenshot of /inventory page"),
+          ...embeddedScreenshot("fig9_inventory.png", "Figure 9: Lab Equipment Inventory Browsing with Availability Meters"),
 
           heading2("3.5 Requisition Checkout & Document Upload Modal"),
           p("Enables students to specify required item quantities, define expected return dates, state project purpose, and upload supporting letters (PDF/PNG up to 5MB) via multipart form upload."),
-          diagramPlaceholder("Figure 10: Requisition Modal with Document Upload", "Insert screenshot of Borrow Request modal"),
+          ...embeddedScreenshot("fig10_requisition_modal.png", "Figure 10: Requisition & Document Upload Checkout Modal"),
 
           heading2("3.6 Faculty Approval & Handover Panel"),
           p("Provides laboratory faculty with a live queue of pending requests, applicant roll numbers, purpose descriptions, and attached documents. Faculty can approve or reject with remarks, confirm physical handover (decrementing inventory), and verify returns."),
-          diagramPlaceholder("Figure 11: Faculty Approval Dashboard", "Insert screenshot of /faculty page"),
+          ...embeddedScreenshot("fig11_faculty_dashboard.png", "Figure 11: Faculty Approval Dashboard, Equipment Handover & Return Verification"),
 
           heading2("3.7 Administrator Decision Override & Audit Trail"),
           p("Allows administrators to supervise both labs, override faculty decisions with mandatory justifications, inspect audit trails in the override log, and provision new faculty accounts with auto-generated passwords."),
-          diagramPlaceholder("Figure 12: Admin Dashboard & Override Audit Logs", "Insert screenshot of /admin page"),
+          ...embeddedScreenshot("fig12_admin_dashboard.png", "Figure 12: Administrator Decision Override Panel & Audit Trail Log"),
 
           heading2("3.8 Penalties & Overdue Violation Management"),
           p("Monitors outstanding dues, calculates daily late return fines and equipment damage charges, and enables administrators to record payments or grant official waivers."),
-          diagramPlaceholder("Figure 13: Penalties Management Interface", "Insert screenshot of /penalties page"),
+          ...embeddedScreenshot("fig13_penalties.png", "Figure 13: Penalties & Overdue Violation Management Interface"),
 
           // ==================== CHAPTER 4: OBSERVATIONS ====================
           pageBreak(),
@@ -600,8 +647,14 @@ function createReportDocument() {
 async function main() {
   const doc = createReportDocument();
   const buffer = await Packer.toBuffer(doc);
-  fs.writeFileSync("Lab_Inventory_Management_System_Project_Report.docx", buffer);
-  console.log("Successfully generated Lab_Inventory_Management_System_Project_Report.docx");
+  try {
+    fs.writeFileSync("Lab_Inventory_Management_System_Project_Report.docx", buffer);
+    console.log("Updated Lab_Inventory_Management_System_Project_Report.docx");
+  } catch (e) {
+    console.warn("Primary docx file is open in Word, saving to new version...");
+  }
+  fs.writeFileSync("Lab_Inventory_Management_System_Project_Report_With_Screenshots.docx", buffer);
+  console.log("Successfully generated Lab_Inventory_Management_System_Project_Report_With_Screenshots.docx with embedded screenshots!");
 }
 
 main().catch(console.error);
