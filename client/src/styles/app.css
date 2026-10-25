@@ -339,3 +339,256 @@ h1 {
     width: 100%;
   }
 }
+
+/* Appended extension styles maintaining original color palette */
+
+.tab-group {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.tab-btn {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--ink);
+  cursor: pointer;
+  font-weight: 500;
+  padding: 8px 16px;
+  transition: 0.2s ease;
+}
+
+.tab-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.tab-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--white);
+}
+
+.form-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.form-control,
+.form-select,
+textarea.form-control {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 0.95rem;
+  padding: 9px 12px;
+  width: 100%;
+}
+
+.form-control:focus,
+.form-select:focus,
+textarea.form-control:focus {
+  border-color: var(--accent);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(99, 64, 40, 0.15);
+}
+
+.btn {
+  align-items: center;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-flex;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  gap: 6px;
+  justify-content: center;
+  padding: 9px 16px;
+  transition: 0.2s ease;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--white);
+}
+
+.btn-primary:hover {
+  background: #4B2F1F;
+}
+
+.btn-secondary {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.btn-secondary:hover {
+  background: #978270;
+}
+
+.btn-success {
+  background: #385A2E;
+  color: var(--white);
+}
+
+.btn-success:hover {
+  background: #2C4724;
+}
+
+.btn-danger {
+  background: #8A3324;
+  color: var(--white);
+}
+
+.btn-danger:hover {
+  background: #6E281C;
+}
+
+.btn-outline {
+  background: transparent;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+}
+
+.btn-outline:hover {
+  background: var(--accent);
+  color: var(--white);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.table th,
+.table td {
+  border-bottom: 1px solid var(--border);
+  padding: 12px;
+  text-align: left;
+}
+
+.table th {
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.inventory-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  margin-top: 16px;
+}
+
+.inventory-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 20px;
+  box-shadow: 0 4px 12px rgba(99, 64, 40, 0.06);
+  transition: 0.2s ease;
+}
+
+.inventory-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(99, 64, 40, 0.12);
+}
+
+.badge {
+  border-radius: 20px;
+  display: inline-block;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 4px 10px;
+}
+
+.badge-success {
+  background: #DDE9D8;
+  color: #385A2E;
+}
+
+.badge-warning {
+  background: #EFE4C8;
+  color: #6A5225;
+}
+
+.badge-danger {
+  background: #EBD6D1;
+  color: #713B30;
+}
+
+.modal-backdrop {
+  align-items: center;
+  background: rgba(56, 39, 25, 0.6);
+  backdrop-filter: blur(2px);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  position: fixed;
+  z-index: 1000;
+  padding: 16px;
+}
+
+.modal-panel {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  max-height: 90vh;
+  max-width: 540px;
+  overflow-y: auto;
+  padding: 24px;
+  width: 100%;
+}
+
+.modal-header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.modal-header h2 {
+  color: var(--accent);
+  font-size: 1.3rem;
+  margin: 0;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 1.4rem;
+  padding: 4px;
+}
+
+.user-badge {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.85rem;
+  background: rgba(255, 255, 255, 0.15);
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin-top: 24px;
+}
+

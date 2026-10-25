@@ -9,20 +9,28 @@ export function authenticate(req, res, next) {
   }
 
   try {
-    req.user = jwt.verify(token, process.env.JWT_SECRET || "change_this_secret");
+    const payload = jwt.verify(
+      token,
+      process.env.JWT_SECRET || "inventory_secret_key_jwt_2026"
+    );
+    req.user = payload;
     return next();
-  } catch {
+  } catch (error) {
     return res.status(401).json({ message: "Invalid or expired token" });
   }
 }
 
 export function authorize(...roles) {
   return (req, res, next) => {
-    if (!roles.includes(req.user?.role)) {
-      return res.status(403).json({ message: "Access denied" });
+    if (!req.user || !roles.includes(req.user.role)) {
+      return res.status(403).json({ message: "Access denied: insufficient permissions" });
     }
-
     return next();
   };
 }
 
+export function requireAdmin(req, res, next) {
+  return authorize("admin")(req, res, next);
+}
+
+export const authenticateToken = authenticate;
