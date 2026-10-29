@@ -7,4 +7,6 @@ coverage/
 server/uploads/*
 !server/uploads/.gitkeep
 ~$*.docx
+~*
+*.tmp
 
