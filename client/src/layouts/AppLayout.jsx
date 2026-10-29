@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Boxes,
   ClipboardList,
@@ -8,14 +8,18 @@ import {
   ShieldAlert,
   WalletCards,
   UserCheck,
-  Compass
+  Compass,
+  User as UserIcon,
+  Settings
 } from "lucide-react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
+import UserProfileModal from "../components/UserProfileModal.jsx";
 
 export default function AppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const token = localStorage.getItem("token");
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   let user = null;
   try {
@@ -43,7 +47,7 @@ export default function AppLayout() {
 
   return (
     <div className="app-shell">
-      <aside className="sidebar">
+      <aside className="sidebar no-print">
         <div>
           <div className="brand">
             <div className="brand-icon">
@@ -91,13 +95,20 @@ export default function AppLayout() {
         </div>
 
         {user && (
-          <div className="user-badge">
+          <div
+            className="user-badge clickable"
+            onClick={() => setShowProfileModal(true)}
+            title="Click to view profile & settings"
+            style={{ cursor: "pointer", transition: "all 0.2s" }}
+          >
             <div className="user-avatar">
               {user.name ? user.name.charAt(0).toUpperCase() : "U"}
             </div>
             <div className="user-info">
               <strong>{user.name}</strong>
-              <span>{user.role}</span>
+              <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                {user.role} <Settings size={12} style={{ opacity: 0.7 }} />
+              </span>
             </div>
           </div>
         )}
@@ -106,6 +117,16 @@ export default function AppLayout() {
       <main className="content">
         <Outlet />
       </main>
+
+      {showProfileModal && (
+        <UserProfileModal
+          user={user}
+          onClose={() => setShowProfileModal(false)}
+          onUserUpdated={() => {
+            // refresh user if needed
+          }}
+        />
+      )}
     </div>
   );
 }

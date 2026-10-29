@@ -1,15 +1,20 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { api } from "../api/http.js";
-import { Plus, Search, CheckCircle, Boxes, Tag, Shield, Clock, Send } from "lucide-react";
+import { Plus, Search, CheckCircle, Boxes, Tag, Shield, Clock, Send, Download, ArrowUpDown, XCircle } from "lucide-react";
+import { exportToCsv } from "../utils/exportCsv.js";
+import { useToast } from "../components/Toast.jsx";
 
 export default function InventoryPage() {
   const [items, setItems] = useState([]);
   const [labs, setLabs] = useState([]);
   const [selectedLab, setSelectedLab] = useState("all");
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [stockFilter, setStockFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("name_asc");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const { addToast } = useToast();
 
   // Request modal state
   const [requestModalItem, setRequestModalItem] = useState(null);
@@ -69,6 +74,47 @@ export default function InventoryPage() {
     }
   }
 
+  // Filter and Sort
+  const processedItems = useMemo(() => {
+    return items
+      .filter((item) => {
+        const avail = item.availableQuantity ?? 0;
+        if (stockFilter === "in_stock") return avail > 0;
+        if (stockFilter === "low_stock") return avail > 0 && avail <= 3;
+        if (stockFilter === "out_of_stock") return avail === 0;
+        return true;
+      })
+      .sort((a, b) => {
+        if (sortBy === "name_asc") return (a.name || "").localeCompare(b.name || "");
+        if (sortBy === "stock_desc") return (b.availableQuantity ?? 0) - (a.availableQuantity ?? 0);
+        if (sortBy === "stock_asc") return (a.availableQuantity ?? 0) - (b.availableQuantity ?? 0);
+        if (sortBy === "duration_asc") return (a.borrowDurationDays || 7) - (b.borrowDurationDays || 7);
+        return 0;
+      });
+  }, [items, stockFilter, sortBy]);
+
+  function handleExportCsv() {
+    exportToCsv("Lab_Inventory_Catalog", [
+      { key: "name", label: "Component Name" },
+      { key: "assetCode", label: "Asset Code" },
+      { key: "category", label: "Category" },
+      { key: "labName", label: "Laboratory", formatter: (_, r) => r.labId?.name || "N/A" },
+      { key: "totalQuantity", label: "Total Stock" },
+      { key: "availableQuantity", label: "Available Stock" },
+      { key: "condition", label: "Condition" },
+      { key: "borrowDurationDays", label: "Max Borrow Days" },
+      { key: "status", label: "Status" }
+    ], processedItems);
+    addToast("Exported inventory catalog as CSV", "success");
+  }
+
+  function handleClearFilters() {
+    setSelectedLab("all");
+    setSelectedCategory("all");
+    setStockFilter("all");
+    setSearch("");
+  }
+
   async function handleBorrowSubmit(e) {
     e.preventDefault();
     if (!requestModalItem) return;
@@ -100,13 +146,14 @@ export default function InventoryPage() {
         headers: { "Content-Type": "multipart/form-data" }
       });
 
-      setMessage(`Borrow request submitted for ${requestModalItem.name}! Awaiting faculty approval.`);
+      addToast(`Requisition for ${requestModalItem.name} submitted successfully!`, "success");
       setRequestModalItem(null);
-      setDocumentFile(null);
       setPurpose("");
+      setDocumentFile(null);
       fetchItems();
     } catch (err) {
-      setMessage(err.response?.data?.message || "Failed to submit request.");
+      const errMsg = err.response?.data?.message || "Failed to submit request";
+      addToast(errMsg, "error");
     } finally {
       setSubmitting(false);
     }
@@ -122,17 +169,18 @@ export default function InventoryPage() {
         labId: newItemLabId,
         category: newItemCategory,
         totalQuantity: Number(newItemTotalQty),
-        availableQuantity: Number(newItemTotalQty),
         condition: newItemCondition,
         description: newItemDesc
       });
+
+      addToast(`Added "${newItemName}" to laboratory inventory!`, "success");
       setShowAddModal(false);
       setNewItemName("");
       setNewItemAssetCode("");
       setNewItemDesc("");
       fetchItems();
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to add item");
+      addToast(err.response?.data?.message || "Failed to add item", "error");
     } finally {
       setSubmitting(false);
     }
@@ -147,33 +195,37 @@ export default function InventoryPage() {
     "Mechanical tools"
   ];
 
+  const hasActiveFilters = selectedLab !== "all" || selectedCategory !== "all" || stockFilter !== "all" || search.trim() !== "";
+
   return (
     <section>
       <div className="section-header">
         <div>
-          <h1>Lab Equipment Inventory</h1>
-          <p className="dashboard-subtitle">Makers Lab 2 & Design IoT Lab — Search, check stock, and requisition</p>
+          <h1>Laboratory Equipment Inventory</h1>
+          <p className="dashboard-subtitle">
+            Browse hardware and components available across Makers Lab 2 & Design IoT Lab
+          </p>
         </div>
-        {isPrivileged && (
-          <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
-            <Plus size={16} /> Add Equipment
+
+        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+          <button className="btn btn-outline" onClick={handleExportCsv} title="Download CSV Catalog">
+            <Download size={16} /> Export CSV
           </button>
-        )}
+          {isPrivileged && (
+            <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
+              <Plus size={16} /> Add Equipment
+            </button>
+          )}
+        </div>
       </div>
 
-      {message && (
-        <div style={{ background: "var(--success-bg)", color: "var(--success-text)", border: "1px solid #C4DCBE", padding: "14px 18px", borderRadius: "var(--radius-md)", marginBottom: "20px", display: "flex", alignItems: "center", gap: "10px", fontWeight: 500 }}>
-          <CheckCircle size={20} /> {message}
-        </div>
-      )}
-
       {/* Lab Tabs */}
-      <div className="tab-group">
+      <div className="tab-group" style={{ marginBottom: "16px" }}>
         <button
           className={`tab-btn ${selectedLab === "all" ? "active" : ""}`}
           onClick={() => setSelectedLab("all")}
         >
-          All Labs ({items.length})
+          All Facilities ({labs.length} Labs)
         </button>
         {labs.map((lab) => (
           <button
@@ -186,105 +238,189 @@ export default function InventoryPage() {
         ))}
       </div>
 
-      {/* Search & Filter Controls */}
-      <div style={{ display: "flex", gap: "14px", marginBottom: "24px", flexWrap: "wrap", alignItems: "center" }}>
-        <div style={{ display: "flex", alignItems: "center", background: "var(--white)", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", padding: "0 14px", flex: 1, minWidth: "260px", boxShadow: "var(--shadow-sm)" }}>
-          <Search size={18} color="var(--muted)" />
+      {/* Search & Sort Toolbar */}
+      <div className="inventory-filters" style={{ display: "flex", gap: "12px", flexWrap: "wrap", alignItems: "center", marginBottom: "16px" }}>
+        <div className="search-bar" style={{ flex: 1, minWidth: "260px" }}>
+          <Search size={18} />
           <input
             type="text"
-            placeholder="Search items by name, asset code, or description..."
+            placeholder="Search by component name, sensor type, board model..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            style={{ border: "none", outline: "none", padding: "11px 12px", width: "100%", fontFamily: "inherit", fontSize: "0.92rem", background: "transparent" }}
           />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)", padding: "0 6px" }}
+              title="Clear search"
+            >
+              ✕
+            </button>
+          )}
         </div>
 
-        <select
-          className="form-select"
-          style={{ width: "auto", minWidth: "190px", height: "42px", boxShadow: "var(--shadow-sm)" }}
-          value={selectedCategory}
-          onChange={(e) => setSelectedCategory(e.target.value)}
-        >
-          {categories.map((c) => (
-            <option key={c} value={c}>
-              {c === "all" ? "All Categories" : c}
-            </option>
-          ))}
-        </select>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <ArrowUpDown size={16} color="var(--muted)" />
+          <select
+            className="form-select"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            style={{ minWidth: "180px", padding: "8px 12px", borderRadius: "var(--radius-sm)" }}
+          >
+            <option value="name_asc">Name (A to Z)</option>
+            <option value="stock_desc">Available Stock (High to Low)</option>
+            <option value="stock_asc">Available Stock (Low to High)</option>
+            <option value="duration_asc">Borrow Duration (Short to Long)</option>
+          </select>
+        </div>
       </div>
 
-      {/* Inventory Grid */}
+      {/* Category Pills & Availability Chips */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px", marginBottom: "20px" }}>
+        {/* Categories */}
+        <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+          {categories.map((cat) => (
+            <button
+              key={cat}
+              className={`filter-chip ${selectedCategory === cat ? "active" : ""}`}
+              onClick={() => setSelectedCategory(cat)}
+            >
+              {cat === "all" ? "All Categories" : cat}
+            </button>
+          ))}
+        </div>
+
+        {/* Stock status pills */}
+        <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+          <button
+            className={`filter-chip ${stockFilter === "all" ? "active" : ""}`}
+            onClick={() => setStockFilter("all")}
+          >
+            All Stock
+          </button>
+          <button
+            className={`filter-chip ${stockFilter === "in_stock" ? "active" : ""}`}
+            onClick={() => setStockFilter("in_stock")}
+            style={{ color: stockFilter === "in_stock" ? "var(--white)" : "#285420" }}
+          >
+            ● In Stock
+          </button>
+          <button
+            className={`filter-chip ${stockFilter === "low_stock" ? "active" : ""}`}
+            onClick={() => setStockFilter("low_stock")}
+            style={{ color: stockFilter === "low_stock" ? "var(--white)" : "#70541C" }}
+          >
+            ● Low (≤3)
+          </button>
+          <button
+            className={`filter-chip ${stockFilter === "out_of_stock" ? "active" : ""}`}
+            onClick={() => setStockFilter("out_of_stock")}
+            style={{ color: stockFilter === "out_of_stock" ? "var(--white)" : "#782C1D" }}
+          >
+            ● Out of Stock
+          </button>
+        </div>
+      </div>
+
+      {/* Results Header Counter & Clear Filter */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.85rem", color: "var(--muted)", marginBottom: "16px" }}>
+        <span>
+          Showing <strong>{processedItems.length}</strong> of <strong>{items.length}</strong> components
+        </span>
+        {hasActiveFilters && (
+          <button
+            onClick={handleClearFilters}
+            style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", display: "flex", alignItems: "center", gap: "4px", fontSize: "0.82rem", fontWeight: 600 }}
+          >
+            <XCircle size={14} /> Clear all filters
+          </button>
+        )}
+      </div>
+
+      {/* Grid of Equipment Cards */}
       {loading ? (
-        <div className="empty-state">Loading lab equipment...</div>
-      ) : items.length === 0 ? (
+        <div className="empty-state">Loading laboratory inventory...</div>
+      ) : processedItems.length === 0 ? (
         <div className="empty-state">
           <Boxes size={36} color="var(--muted)" />
-          <p style={{ margin: 0, fontWeight: 500 }}>No equipment matches your search or filter criteria.</p>
+          <p style={{ marginTop: "12px", fontSize: "1.05rem", fontWeight: 600 }}>No hardware found matching your criteria</p>
+          <p style={{ fontSize: "0.85rem", color: "var(--muted)" }}>Try adjusting your search terms, categories, or stock filters.</p>
+          {hasActiveFilters && (
+            <button className="btn btn-outline" onClick={handleClearFilters} style={{ marginTop: "12px" }}>
+              Reset Filters
+            </button>
+          )}
         </div>
       ) : (
         <div className="inventory-grid">
-          {items.map((item) => {
-            const percentage = item.totalQuantity > 0 ? (item.availableQuantity / item.totalQuantity) * 100 : 0;
-            const meterColor = percentage > 50 ? "#346327" : percentage > 20 ? "#B8751E" : "#8D2F1E";
+          {processedItems.map((item) => {
+            const avail = item.availableQuantity ?? 0;
+            const total = item.totalQuantity || 1;
+            const availPct = Math.round((avail / total) * 100);
+            const isOutOfStock = avail <= 0;
+            const isLowStock = avail > 0 && avail <= 3;
 
             return (
               <div className="inventory-card" key={item._id}>
-                <div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
-                    <span className="badge badge-warning">
-                      <Tag size={12} /> {item.labId?.name || "Lab Item"}
-                    </span>
-                    <span className={`badge ${item.availableQuantity > 0 ? "badge-success" : "badge-danger"}`}>
-                      {item.availableQuantity > 0 ? `${item.availableQuantity} / ${item.totalQuantity} Available` : "Unavailable"}
-                    </span>
+                <div className="card-top">
+                  <span className="card-tag">{item.category}</span>
+                  <span className={`badge ${isOutOfStock ? "badge-danger" : isLowStock ? "badge-warning" : "badge-success"}`}>
+                    {isOutOfStock ? "Out of Stock" : isLowStock ? `Low: ${avail} Left` : `${avail} Available`}
+                  </span>
+                </div>
+
+                <h3 className="card-title">{item.name}</h3>
+
+                <div className="card-specs">
+                  <div className="spec-item">
+                    <span className="spec-label">Facility</span>
+                    <span className="spec-value">{item.labId?.name || "Engineering Lab"}</span>
                   </div>
-
-                  <h3>{item.name}</h3>
-                  <div style={{ fontSize: "0.82rem", color: "var(--muted)", display: "flex", gap: "10px", alignItems: "center" }}>
-                    <span><code>{item.assetCode}</code></span>
-                    <span>•</span>
-                    <span>{item.category}</span>
+                  <div className="spec-item">
+                    <span className="spec-label">Condition</span>
+                    <span className="spec-value">{item.condition || "Operational"}</span>
                   </div>
-
-                  {/* Stock Availability Meter */}
-                  <div className="stock-meter-bar" title={`${percentage.toFixed(0)}% available in stock`}>
-                    <div
-                      className="stock-meter-fill"
-                      style={{
-                        width: `${percentage}%`,
-                        backgroundColor: meterColor
-                      }}
-                    />
+                  <div className="spec-item">
+                    <span className="spec-label">Max Duration</span>
+                    <span className="spec-value">{item.borrowDurationDays || 7} Days</span>
                   </div>
-
-                  <p style={{ fontSize: "0.88rem", color: "var(--ink)", margin: "0 0 16px", lineHeight: 1.45, opacity: 0.9 }}>
-                    {item.description || "Lab equipment component for coursework and project development."}
-                  </p>
-
-                  <div style={{ fontSize: "0.82rem", color: "var(--muted)", borderTop: "1px solid var(--page)", paddingTop: "12px", display: "flex", flexDirection: "column", gap: "4px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                      <Clock size={13} /> Allowed: <strong>{item.borrowDurationDays || 7} days</strong>
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                      <Shield size={13} /> In-Charge: {item.labId?.facultyInchargeEmail || "faculty@university.edu"}
-                    </div>
+                  <div className="spec-item">
+                    <span className="spec-label">Asset Code</span>
+                    <span className="spec-value" style={{ fontFamily: "monospace", fontSize: "0.8rem" }}>{item.assetCode || "N/A"}</span>
                   </div>
                 </div>
 
-                <div style={{ marginTop: "20px" }}>
+                {/* Stock progress meter */}
+                <div style={{ marginTop: "14px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.78rem", color: "var(--muted)", marginBottom: "4px" }}>
+                    <span>Live Stock Availability</span>
+                    <span>{avail} / {total} units ({availPct}%)</span>
+                  </div>
+                  <div className="stock-meter">
+                    <div
+                      className="stock-meter-fill"
+                      style={{
+                        width: `${availPct}%`,
+                        background: isOutOfStock ? "var(--danger-text)" : isLowStock ? "var(--warning-text)" : "var(--success-text)"
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div className="card-footer" style={{ marginTop: "18px" }}>
                   <button
                     className="btn btn-primary"
                     style={{ width: "100%" }}
-                    disabled={item.availableQuantity <= 0 || user?.role !== "student"}
+                    disabled={isOutOfStock}
                     onClick={() => {
                       setRequestModalItem(item);
                       setRequestQuantity(1);
-                      const defaultReturn = new Date();
-                      defaultReturn.setDate(defaultReturn.getDate() + (item.borrowDurationDays || 7));
-                      setExpectedReturnDate(defaultReturn.toISOString().split("T")[0]);
+                      const returnDate = new Date();
+                      returnDate.setDate(returnDate.getDate() + (item.borrowDurationDays || 7));
+                      setExpectedReturnDate(returnDate.toISOString().split("T")[0]);
                     }}
                   >
-                    {user?.role !== "student" ? "Students Only" : item.availableQuantity > 0 ? "Request to Borrow" : "Out of Stock"}
+                    {isOutOfStock ? "Currently Unavailable" : "Request to Borrow"}
                   </button>
                 </div>
               </div>
@@ -293,7 +429,7 @@ export default function InventoryPage() {
         </div>
       )}
 
-      {/* Borrow Request Modal */}
+      {/* Requisition Checkout Modal */}
       {requestModalItem && (
         <div className="modal-backdrop">
           <div className="modal-panel">
@@ -306,7 +442,7 @@ export default function InventoryPage() {
               <div style={{ background: "var(--page)", border: "1px solid var(--border)", padding: "14px", borderRadius: "var(--radius-md)", marginBottom: "18px" }}>
                 <strong style={{ fontSize: "1.05rem", color: "var(--accent)" }}>{requestModalItem.name}</strong>
                 <div style={{ fontSize: "0.85rem", color: "var(--muted)", marginTop: "4px" }}>
-                  Lab: {requestModalItem.labId?.name} | Available Quantity: <strong>{requestModalItem.availableQuantity}</strong>
+                  Lab: {requestModalItem.labId?.name} | Available Stock: <strong>{requestModalItem.availableQuantity} units</strong>
                 </div>
               </div>
 

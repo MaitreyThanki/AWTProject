@@ -9,23 +9,26 @@ import AdminDashboard from "./pages/AdminDashboard.jsx";
 import InventoryPage from "./pages/InventoryPage.jsx";
 import RequestsPage from "./pages/RequestsPage.jsx";
 import PenaltiesPage from "./pages/PenaltiesPage.jsx";
+import { ToastProvider } from "./components/Toast.jsx";
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/admin-login" element={<AdminLoginPage />} />
-        <Route element={<AppLayout />}>
-          <Route path="/" element={<Navigate to="/inventory" replace />} />
-          <Route path="/student" element={<StudentDashboard />} />
-          <Route path="/faculty" element={<FacultyDashboard />} />
-          <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/inventory" element={<InventoryPage />} />
-          <Route path="/requests" element={<RequestsPage />} />
-          <Route path="/penalties" element={<PenaltiesPage />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
+    <ToastProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/admin-login" element={<AdminLoginPage />} />
+          <Route element={<AppLayout />}>
+            <Route path="/" element={<Navigate to="/inventory" replace />} />
+            <Route path="/student" element={<StudentDashboard />} />
+            <Route path="/faculty" element={<FacultyDashboard />} />
+            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/inventory" element={<InventoryPage />} />
+            <Route path="/requests" element={<RequestsPage />} />
+            <Route path="/penalties" element={<PenaltiesPage />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </ToastProvider>
   );
 }

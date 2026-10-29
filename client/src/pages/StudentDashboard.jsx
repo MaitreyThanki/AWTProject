@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
 import MetricCard from "../components/MetricCard.jsx";
-import { RefreshCcw, History } from "lucide-react";
+import { RefreshCcw, History, Printer } from "lucide-react";
 import { Link } from "react-router-dom";
 import { api } from "../api/http.js";
+import GatePassModal from "../components/GatePassModal.jsx";
 
 export default function StudentDashboard() {
   const [history, setHistory] = useState([]);
@@ -14,6 +15,7 @@ export default function StudentDashboard() {
     penaltyTotal: 0
   });
   const [loading, setLoading] = useState(true);
+  const [selectedGatePass, setSelectedGatePass] = useState(null);
 
   useEffect(() => {
     async function loadData() {
@@ -51,7 +53,7 @@ export default function StudentDashboard() {
       <div className="dashboard-header">
         <div>
           <h1>Student Dashboard</h1>
-          <p className="dashboard-subtitle">Manage your lab requests and borrowing history.</p>
+          <p className="dashboard-subtitle">Manage your lab requests, equipment clearances, and borrowing history.</p>
         </div>
       </div>
 
@@ -86,60 +88,84 @@ export default function StudentDashboard() {
           </div>
         ) : (
           <div className="history-list">
-            {history.map((request) => (
-              <div className="history-card" key={request._id}>
-                <div className="history-main">
-                  <div className="history-icon">
-                    <History size={20} />
-                  </div>
+            {history.map((request) => {
+              const isEligibleForGatePass = ["approved", "issued", "returned"].includes((request.status || "").toLowerCase());
 
-                  <div>
-                    <h3>
-                      Request #{String(request._id).slice(-6)} • {request.labId?.name || "Lab"}
-                    </h3>
+              return (
+                <div className="history-card" key={request._id}>
+                  <div className="history-main">
+                    <div className="history-icon">
+                      <History size={20} />
+                    </div>
 
-                    <p>
-                      <strong>Items: </strong>
-                      {request.items?.map((i) => `${i.itemName} (${i.quantityRequested}x)`).join(", ")}
-                    </p>
+                    <div>
+                      <h3>
+                        Request #{String(request._id).slice(-6)} • {request.labId?.name || "Lab"}
+                      </h3>
 
-                    <p>
-                      Requested on{" "}
-                      {request.createdAt ? new Date(request.createdAt).toLocaleDateString() : "N/A"}
-                      {" • "}
-                      Return deadline:{" "}
-                      {request.expectedReturnDate
-                        ? new Date(request.expectedReturnDate).toLocaleDateString()
-                        : "Not specified"}
-                    </p>
-
-                    {request.facultyRemarks && (
-                      <p style={{ color: "var(--accent)", fontStyle: "italic" }}>
-                        Remarks: {request.facultyRemarks}
+                      <p>
+                        <strong>Items: </strong>
+                        {request.items?.map((i) => `${i.itemName} (${i.quantityRequested}x)`).join(", ")}
                       </p>
-                    )}
+
+                      <p>
+                        Requested on{" "}
+                        {request.createdAt ? new Date(request.createdAt).toLocaleDateString() : "N/A"}
+                        {" • "}
+                        Return deadline:{" "}
+                        {request.expectedReturnDate
+                          ? new Date(request.expectedReturnDate).toLocaleDateString()
+                          : "Not specified"}
+                      </p>
+
+                      {request.facultyRemarks && (
+                        <p style={{ color: "var(--accent)", fontStyle: "italic" }}>
+                          Remarks: {request.facultyRemarks}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="history-actions" style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "8px" }}>
+                    <span className={`history-status status-${(request.status || "pending").toLowerCase()}`}>
+                      {request.status || "Pending"}
+                    </span>
+
+                    <div style={{ display: "flex", gap: "6px" }}>
+                      {isEligibleForGatePass && (
+                        <button
+                          className="btn btn-outline"
+                          style={{ padding: "6px 10px", fontSize: "0.82rem", display: "flex", alignItems: "center", gap: "4px" }}
+                          onClick={() => setSelectedGatePass(request)}
+                          title="View & Print Official Gate Pass"
+                        >
+                          <Printer size={14} /> Gate Pass
+                        </button>
+                      )}
+
+                      <Link
+                        to="/inventory"
+                        className="get-again-btn"
+                        onClick={() => handleGetAgain(request)}
+                      >
+                        <RefreshCcw size={15} />
+                        Get Again
+                      </Link>
+                    </div>
                   </div>
                 </div>
-
-                <div className="history-actions">
-                  <span className={`history-status status-${(request.status || "pending").toLowerCase()}`}>
-                    {request.status || "Pending"}
-                  </span>
-
-                  <Link
-                    to="/inventory"
-                    className="get-again-btn"
-                    onClick={() => handleGetAgain(request)}
-                  >
-                    <RefreshCcw size={16} />
-                    Get Again
-                  </Link>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
+
+      {selectedGatePass && (
+        <GatePassModal
+          request={selectedGatePass}
+          onClose={() => setSelectedGatePass(null)}
+        />
+      )}
     </section>
   );
 }
