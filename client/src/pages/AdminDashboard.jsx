@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from "react";
 import MetricCard from "../components/MetricCard.jsx";
 import { api } from "../api/http.js";
-import { ShieldCheck, UserPlus, History, AlertTriangle, FileText } from "lucide-react";
+import { ShieldCheck, UserPlus, History, AlertTriangle, FileText, Download, Printer, CheckCircle } from "lucide-react";
+import GatePassModal from "../components/GatePassModal.jsx";
+import { exportToCsv } from "../utils/exportCsv.js";
+import { useToast } from "../components/Toast.jsx";
 
 export default function AdminDashboard() {
   const [metrics, setMetrics] = useState({
@@ -19,7 +22,8 @@ export default function AdminDashboard() {
   const [requests, setRequests] = useState([]);
   const [overrideLogs, setOverrideLogs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState("");
+  const [selectedGatePass, setSelectedGatePass] = useState(null);
+  const { addToast } = useToast();
 
   // Override Modal
   const [overrideTarget, setOverrideTarget] = useState(null);
@@ -53,9 +57,33 @@ export default function AdminDashboard() {
       }
     } catch (err) {
       console.error("Admin dashboard load failed:", err);
+      addToast("Failed to load admin metrics", "error");
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleExportOverrides() {
+    exportToCsv("Admin_Override_Audit_Logs", [
+      { key: "requestId", label: "Request ID", formatter: (_, r) => String(r.requestId?._id || r.requestId || "") },
+      { key: "adminEmail", label: "Admin Account", formatter: (_, r) => r.adminId?.email || "System Admin" },
+      { key: "prevStatus", label: "Previous Status", formatter: (_, r) => r.previousStatus || "N/A" },
+      { key: "updatedStatus", label: "New Status", formatter: (_, r) => r.updatedStatus || "N/A" },
+      { key: "reason", label: "Mandatory Reason", formatter: (_, r) => r.reason || "N/A" },
+      { key: "timestamp", label: "Date & Time", formatter: (_, r) => new Date(r.createdAt || r.overrideDate).toLocaleString() }
+    ], overrideLogs);
+    addToast("Exported override logs as CSV", "success");
+  }
+
+  function handleExportRequests() {
+    exportToCsv("Campus_Requisitions_Master", [
+      { key: "requestId", label: "Request ID", formatter: (_, r) => String(r._id) },
+      { key: "studentName", label: "Student", formatter: (_, r) => r.studentId?.name || "N/A" },
+      { key: "labName", label: "Facility", formatter: (_, r) => r.labId?.name || "N/A" },
+      { key: "status", label: "Status" },
+      { key: "expectedReturn", label: "Due Date", formatter: (_, r) => r.expectedReturnDate ? new Date(r.expectedReturnDate).toLocaleDateString() : "N/A" }
+    ], requests);
+    addToast("Exported master request records as CSV", "success");
   }
 
   async function handleApplyOverride(e) {
@@ -67,12 +95,12 @@ export default function AdminDashboard() {
         updatedStatus: overrideStatus,
         reason: overrideReason.trim()
       });
-      setMessage(`Decision overridden for Request #${overrideTarget._id}. Action logged.`);
+      addToast(`Decision overridden for Request #${String(overrideTarget._id).slice(-6)}. Action logged.`, "success");
       setOverrideTarget(null);
       setOverrideReason("");
       loadAdminData();
     } catch (err) {
-      alert(err.response?.data?.message || "Override failed");
+      addToast(err.response?.data?.message || "Override failed", "error");
     }
   }
 
@@ -86,9 +114,9 @@ export default function AdminDashboard() {
       setGeneratedCreds(res.data);
       setFacultyName("");
       setFacultyEmail("");
-      setMessage("Faculty account created and temporary password generated!");
+      addToast("Faculty account created successfully!", "success");
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to create faculty account");
+      addToast(err.response?.data?.message || "Failed to create faculty", "error");
     }
   }
 
@@ -96,74 +124,73 @@ export default function AdminDashboard() {
     <section>
       <div className="section-header">
         <div>
-          <h1>Administrator Panel</h1>
-          <p className="dashboard-subtitle">Complete control over Makers Lab 2 & Design IoT Lab</p>
+          <h1>Administrator Control Center</h1>
+          <p className="dashboard-subtitle">Institutional governance, decision overrides, and faculty account provisioning</p>
         </div>
-        <div style={{ display: "flex", gap: "8px" }}>
+
+        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+          {activeTab === "overrides" ? (
+            <button className="btn btn-outline" onClick={handleExportOverrides}>
+              <Download size={16} /> Export Audit Logs
+            </button>
+          ) : (
+            <button className="btn btn-outline" onClick={handleExportRequests}>
+              <Download size={16} /> Export Requisitions
+            </button>
+          )}
+
           <button className="btn btn-primary" onClick={() => setShowFacultyModal(true)}>
-            <UserPlus size={16} /> Register Faculty
+            <UserPlus size={16} /> Provision Faculty Account
           </button>
         </div>
       </div>
 
       <div className="metric-grid">
-        <MetricCard label="Total Equipment Items" value={metrics.totalInventory} />
-        <MetricCard label="Total Physical Units" value={metrics.totalStock} />
+        <MetricCard label="Campus Gear Stock" value={`${metrics.availableItems} / ${metrics.totalStock}`} />
         <MetricCard label="Currently Borrowed" value={metrics.borrowedItems} />
         <MetricCard label="Pending Approvals" value={metrics.pendingApprovals} />
         <MetricCard label="Overdue Items" value={metrics.overdueReturns} />
-        <MetricCard label="Active Penalties" value={metrics.activePenalties} />
       </div>
 
-      {message && (
-        <div style={{ background: "#DDE9D8", color: "#385A2E", padding: "12px", borderRadius: "8px", margin: "20px 0" }}>
-          {message}
-        </div>
-      )}
-
-      {/* Tabs */}
-      <div className="tab-group" style={{ marginTop: "28px" }}>
+      <div className="tab-group" style={{ margin: "24px 0 16px" }}>
         <button className={`tab-btn ${activeTab === "overview" ? "active" : ""}`} onClick={() => setActiveTab("overview")}>
-          Recent Activity
+          Governance Overview
         </button>
         <button className={`tab-btn ${activeTab === "requests" ? "active" : ""}`} onClick={() => setActiveTab("requests")}>
-          All Borrow Records & Overrides
+          Supervise Requisitions ({requests.length})
         </button>
         <button className={`tab-btn ${activeTab === "overrides" ? "active" : ""}`} onClick={() => setActiveTab("overrides")}>
-          Audit Override Logs
+          Override Audit Logs ({overrideLogs.length})
         </button>
       </div>
 
       {loading ? (
-        <div className="empty-state">Loading data...</div>
+        <div className="empty-state">Loading administration records...</div>
       ) : activeTab === "overrides" ? (
-        <div className="table-wrap">
-          <h2>Administrative Override History (Audit Trail)</h2>
+        <div className="audit-table-wrap">
           {overrideLogs.length === 0 ? (
-            <div className="empty-state">No overrides recorded yet.</div>
+            <div className="empty-state">No administrative overrides have been logged yet.</div>
           ) : (
-            <table className="table" style={{ marginTop: "12px" }}>
+            <table className="audit-table">
               <thead>
                 <tr>
                   <th>Timestamp</th>
-                  <th>Admin</th>
-                  <th>Request ID</th>
-                  <th>Transition</th>
-                  <th>Mandatory Reason</th>
+                  <th>Request #</th>
+                  <th>Previous</th>
+                  <th>New Status</th>
+                  <th>Admin User</th>
+                  <th>Mandatory Justification</th>
                 </tr>
               </thead>
               <tbody>
                 {overrideLogs.map((log) => (
                   <tr key={log._id}>
-                    <td>{new Date(log.overrideDate || log.createdAt).toLocaleString()}</td>
-                    <td>{log.adminName || log.adminId?.name || "Admin"}</td>
-                    <td>#{String(log.requestId?._id || log.requestId).slice(-6)}</td>
-                    <td>
-                      <span className="badge badge-warning">{log.previousStatus}</span>
-                      {" → "}
-                      <span className="badge badge-success">{log.updatedStatus}</span>
-                    </td>
-                    <td><em>"{log.reason}"</em></td>
+                    <td>{new Date(log.createdAt || log.overrideDate).toLocaleString()}</td>
+                    <td><strong>#{String(log.requestId?._id || log.requestId).slice(-6)}</strong></td>
+                    <td><span className="badge badge-warning">{log.previousStatus}</span></td>
+                    <td><span className="badge badge-success">{log.updatedStatus}</span></td>
+                    <td>{log.adminId?.email || "Super Admin"}</td>
+                    <td style={{ color: "var(--accent)" }}>"{log.reason}"</td>
                   </tr>
                 ))}
               </tbody>
@@ -171,56 +198,83 @@ export default function AdminDashboard() {
           )}
         </div>
       ) : (
-        <div className="table-wrap" style={{ overflowX: "auto" }}>
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Student</th>
-                <th>Lab & Items</th>
-                <th>Return Date</th>
-                <th>Status</th>
-                <th>Admin Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {requests.map((r) => (
-                <tr key={r._id}>
-                  <td>
-                    <strong>{r.studentId?.name || "Student"}</strong>
-                    <div style={{ fontSize: "0.8rem", color: "var(--muted)" }}>
-                      {r.studentId?.email} • {r.studentId?.enrollmentNumber || "N/A"}
-                    </div>
-                  </td>
-                  <td>
-                    <span className="badge badge-warning">{r.labId?.name || "Lab"}</span>
-                    <div style={{ fontSize: "0.85rem", marginTop: "4px" }}>
-                      {r.items?.map((it) => `${it.itemName} (${it.quantityRequested}x)`).join(", ")}
-                    </div>
-                  </td>
-                  <td style={{ fontSize: "0.85rem" }}>
-                    {r.expectedReturnDate ? new Date(r.expectedReturnDate).toLocaleDateString() : "N/A"}
-                  </td>
-                  <td>
-                    <span className={`history-status status-${(r.status || "pending").toLowerCase()}`}>
-                      {r.status}
+        <div className="history-list">
+          {requests.map((req) => (
+            <div className="history-card" key={req._id}>
+              <div className="history-main" style={{ alignItems: "flex-start" }}>
+                <div className="history-icon" style={{ marginTop: "4px" }}>
+                  <ShieldCheck size={20} />
+                </div>
+
+                <div>
+                  <div style={{ display: "flex", gap: "8px", alignItems: "center", marginBottom: "4px" }}>
+                    <h3 style={{ margin: 0 }}>Request #{String(req._id).slice(-6)}</h3>
+                    <span className="badge badge-warning">{req.labId?.name || "Lab"}</span>
+                    <span style={{ fontSize: "0.85rem", color: "var(--muted)" }}>
+                      Student: {req.studentId?.name} ({req.studentId?.email})
                     </span>
-                  </td>
-                  <td>
+                  </div>
+
+                  <p style={{ margin: "4px 0", color: "var(--ink)" }}>
+                    <strong>Items: </strong>
+                    {req.items?.map((it) => `${it.itemName} (${it.quantityRequested}x)`).join(", ")}
+                  </p>
+
+                  <p style={{ fontSize: "0.85rem", color: "var(--muted)", margin: "4px 0" }}>
+                    <strong>Purpose:</strong> {req.purpose || "N/A"}
+                  </p>
+
+                  <div style={{ display: "flex", gap: "16px", fontSize: "0.8rem", color: "var(--muted)", marginTop: "6px" }}>
+                    <span>Created: {new Date(req.createdAt).toLocaleDateString()}</span>
+                    <span>Expected Return: {req.expectedReturnDate ? new Date(req.expectedReturnDate).toLocaleDateString() : "Immediate"}</span>
+                  </div>
+
+                  {req.facultyRemarks && (
+                    <p style={{ fontSize: "0.85rem", color: "var(--accent)", margin: "6px 0 0" }}>
+                      <strong>Faculty Remarks:</strong> "{req.facultyRemarks}"
+                    </p>
+                  )}
+
+                  {req.adminRemarks && (
+                    <p style={{ fontSize: "0.85rem", color: "#8A3324", margin: "4px 0 0" }}>
+                      <strong>Admin Override Note:</strong> "{req.adminRemarks}"
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="history-actions" style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "8px" }}>
+                <span className={`history-status status-${(req.status || "pending").toLowerCase()}`}>
+                  {req.status}
+                </span>
+
+                <div style={{ display: "flex", gap: "6px" }}>
+                  {["approved", "issued", "returned"].includes((req.status || "").toLowerCase()) && (
                     <button
                       className="btn btn-outline"
-                      style={{ fontSize: "0.8rem", padding: "4px 10px" }}
-                      onClick={() => {
-                        setOverrideTarget(r);
-                        setOverrideStatus(r.status === "rejected" ? "approved" : "rejected");
-                      }}
+                      style={{ padding: "6px 10px", fontSize: "0.82rem", display: "flex", alignItems: "center", gap: "4px" }}
+                      onClick={() => setSelectedGatePass(req)}
+                      title="View & Print Official Gate Pass"
                     >
-                      <ShieldCheck size={14} /> Override Decision
+                      <Printer size={14} /> Gate Pass
                     </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  )}
+
+                  <button
+                    className="btn btn-outline"
+                    style={{ padding: "6px 12px", fontSize: "0.82rem" }}
+                    onClick={() => {
+                      setOverrideTarget(req);
+                      setOverrideStatus(req.status === "rejected" ? "approved" : "rejected");
+                      setOverrideReason("");
+                    }}
+                  >
+                    Override Decision
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
@@ -229,39 +283,43 @@ export default function AdminDashboard() {
         <div className="modal-backdrop">
           <div className="modal-panel">
             <div className="modal-header">
-              <h2>Admin Decision Override</h2>
+              <h2>Administrative Decision Override</h2>
               <button className="close-btn" onClick={() => setOverrideTarget(null)}>✕</button>
             </div>
 
             <form onSubmit={handleApplyOverride}>
-              <p style={{ fontSize: "0.9rem", color: "var(--muted)", margin: "0 0 16px" }}>
-                Overriding decision for Request #{overrideTarget._id} (Current: <strong>{overrideTarget.status}</strong>).
-                All actions are permanently logged in the audit trail.
+              <div style={{ background: "#F1DDD8", color: "#782C1D", padding: "12px", borderRadius: "8px", marginBottom: "16px", fontSize: "0.88rem" }}>
+                <strong>Institutional Notice:</strong> All administrative decision overrides are immutably logged into the audit ledger for institutional compliance.
+              </div>
+
+              <p>
+                Target: <strong>Request #{String(overrideTarget._id).slice(-6)}</strong> ({overrideTarget.studentId?.name})
+                <br />
+                Current Status: <span className="badge badge-warning">{overrideTarget.status}</span>
               </p>
 
               <label className="form-label">
-                New Target Status
+                Override Target Status
                 <select
                   className="form-select"
                   value={overrideStatus}
                   onChange={(e) => setOverrideStatus(e.target.value)}
                 >
-                  <option value="approved">Approved</option>
-                  <option value="rejected">Rejected</option>
-                  <option value="returned">Marked Returned</option>
-                  <option value="cancelled">Cancelled</option>
+                  <option value="approved">Approve Application</option>
+                  <option value="rejected">Reject Application</option>
+                  <option value="cancelled">Cancel Request</option>
                 </select>
               </label>
 
               <label className="form-label">
-                Mandatory Override Reason
+                Mandatory Override Justification / Reason
                 <textarea
                   className="form-control"
                   rows="3"
-                  required
-                  placeholder="State academic / administrative justification for this override..."
+                  placeholder="State academic reason, faculty escalation, or special university exception..."
                   value={overrideReason}
                   onChange={(e) => setOverrideReason(e.target.value)}
+                  required
                 />
               </label>
 
@@ -270,7 +328,7 @@ export default function AdminDashboard() {
                   Cancel
                 </button>
                 <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>
-                  Confirm Override
+                  Confirm Override & Log Trail
                 </button>
               </div>
             </form>
@@ -278,55 +336,50 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* Register Faculty Modal */}
+      {/* Faculty Account Modal */}
       {showFacultyModal && (
         <div className="modal-backdrop">
           <div className="modal-panel">
             <div className="modal-header">
-              <h2>Register Faculty Member</h2>
+              <h2>Provision Faculty Account</h2>
               <button className="close-btn" onClick={() => { setShowFacultyModal(false); setGeneratedCreds(null); }}>✕</button>
             </div>
 
             {generatedCreds ? (
-              <div style={{ background: "#DDE9D8", padding: "16px", borderRadius: "8px" }}>
-                <h3 style={{ color: "#385A2E", margin: "0 0 8px" }}>Faculty Account Created!</h3>
-                <p style={{ margin: "4px 0", fontSize: "0.9rem" }}>
-                  <strong>Email:</strong> {generatedCreds.faculty?.email}
-                </p>
-                <p style={{ margin: "4px 0", fontSize: "0.9rem" }}>
-                  <strong>Temporary Password:</strong> <code>{generatedCreds.temporaryPassword}</code>
-                </p>
-                <p style={{ fontSize: "0.8rem", color: "var(--muted)", marginTop: "8px" }}>
-                  Password has been sent via email. The faculty member must change their password upon first login.
-                </p>
-                <button
-                  className="btn btn-primary"
-                  style={{ width: "100%", marginTop: "12px" }}
-                  onClick={() => { setShowFacultyModal(false); setGeneratedCreds(null); }}
-                >
+              <div>
+                <div style={{ background: "#DDE9D8", color: "#385A2E", padding: "16px", borderRadius: "8px", marginBottom: "16px" }}>
+                  <h3 style={{ margin: "0 0 6px" }}>Faculty Account Provisioned!</h3>
+                  <p style={{ margin: "4px 0" }}>An account email notice has been sent to the instructor.</p>
+                  <p style={{ margin: "4px 0", fontFamily: "monospace", fontSize: "0.95rem" }}>
+                    Email: <strong>{generatedCreds.faculty?.email}</strong>
+                    <br />
+                    Temporary Password: <strong>{generatedCreds.temporaryPassword}</strong>
+                  </p>
+                </div>
+                <button className="btn btn-primary" style={{ width: "100%" }} onClick={() => { setShowFacultyModal(false); setGeneratedCreds(null); }}>
                   Done
                 </button>
               </div>
             ) : (
               <form onSubmit={handleCreateFaculty}>
                 <label className="form-label">
-                  Faculty Name
+                  Faculty Member Full Name
                   <input
                     className="form-control"
                     required
-                    placeholder="Prof. / Dr. Name"
+                    placeholder="e.g. Dr. Yoothika Patel"
                     value={facultyName}
                     onChange={(e) => setFacultyName(e.target.value)}
                   />
                 </label>
 
                 <label className="form-label">
-                  University Email
+                  Official University Email
                   <input
                     className="form-control"
                     type="email"
                     required
-                    placeholder="faculty@university.edu"
+                    placeholder="e.g. yoothika.patel@gsfcuniversity.ac.in"
                     value={facultyEmail}
                     onChange={(e) => setFacultyEmail(e.target.value)}
                   />
@@ -337,13 +390,20 @@ export default function AdminDashboard() {
                     Cancel
                   </button>
                   <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>
-                    Generate Credentials
+                    Provision & Generate Credentials
                   </button>
                 </div>
               </form>
             )}
           </div>
         </div>
+      )}
+
+      {selectedGatePass && (
+        <GatePassModal
+          request={selectedGatePass}
+          onClose={() => setSelectedGatePass(null)}
+        />
       )}
     </section>
   );
