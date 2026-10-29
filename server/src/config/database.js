@@ -1,17 +1,14 @@
-import { Sequelize } from "sequelize";
 import dotenv from "dotenv";
+import mongoose from "mongoose";
 
 dotenv.config();
 
-export const sequelize = new Sequelize(
-  process.env.DB_NAME || "inventory_management",
-  process.env.DB_USER || "labapp",
-  process.env.DB_PASSWORD || "AWT_INVENTORY_LAB",
-  {
-    host: process.env.DB_HOST || "localhost",
-    port: Number(process.env.DB_PORT || 3306),
-    dialect: "mysql",
-    logging: false
-  }
-);
+export async function connectDatabase() {
+  const uri = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/inventory_management";
+  mongoose.set("strictQuery", true);
+  await mongoose.connect(uri, { dbName: process.env.MONGODB_DB || undefined });
+  console.log(`MongoDB connected: ${mongoose.connection.name}`);
+  return mongoose.connection;
+}
 
+export default mongoose;

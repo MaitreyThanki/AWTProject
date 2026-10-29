@@ -1,4 +1,11 @@
-# Inventory Management System Web App Documentation
+# Software Requirements Specification (SRS)
+## Inventory Management System Web Application
+
+**Document version:** 2.0  
+**Updated:** 16 October 2026  
+**Technology baseline:** React + Vite, Express.js, MongoDB + Mongoose, JWT authentication, bcrypt password hashing, and Multer uploads
+
+> This SRS distinguishes intended system requirements from functionality present in the current starter implementation. Features described as requirements are not necessarily implemented yet.
 
 ## 1. Project Overview
 
@@ -64,36 +71,41 @@ Admin users can:
 
 ## 4. System Modules
 
-## 4.1 login
+## 4.1 Authentication and Login
 
-The Login page will have a shared page among all three(Student, Faculty, Admin). There should be a drop down menu to select the entity.
+### 4.1.1 Current Login Page Behaviour
 
-### 4.1.1 Student Sign up Required fields:
+The current React login page is available at `/login` and is titled **Lab Inventory Login**. It contains:
+- A role selector with **Student** and **Faculty** options.
+- An email field.
+- A password field that masks typed characters.
+- A Login button.
+- A message area for successful login or errors.
 
-- Name 
+On submission, the frontend sends `POST /api/auth/login` with `email`, `password`, and `role`. On success, the API returns a JWT token and public user information; the frontend stores the token in browser local storage and displays a success message. On failure, the page displays the API error message when available.
+
+**Current implementation limitations:** the login page does not currently include student registration, faculty password reset/change, OTP/Authenticator verification, or an admin role option. Successful login currently displays a message but does not itself redirect the user to a role-specific dashboard. These items remain future requirements unless implemented separately.
+
+### 4.1.2 Student Registration Requirements
+
+Student self-registration is exposed by the backend endpoint `POST /api/auth/student/register`. The registration workflow should collect:
+- Name
 - University email
-- Phone number 
-- University Program
-- Stay(home/hostel)
-- Password 
-- Confirm Password 
-
-### 4.1.2 Faculty Sign up Required fields:
-
-The Password to there account will be mailed to them and they have to change it later.
-The Password will be randomly generated and will require them to change it to futher proceed with it's use.
-
-- University email
+- Phone number
+- University program
+- Residence type (home/hostel)
 - Password
+- Confirm password (frontend validation requirement)
 
-### 4.1.3 Admin Sign up Required fields:
+The current frontend login page does not provide the registration form; a registration screen and password-confirmation validation are required to make this workflow accessible through the UI.
 
-Admin Sign up or login will not be available in the drop down menu, insted it will be hidden.
+### 4.1.3 Faculty Accounts
 
-- University Admin email
-- OPT submition via Authenticator
+Faculty accounts are expected to be provisioned by an administrator or seeded for development. The current login API authenticates faculty using email, password, and the `faculty` role. Emailing a generated password and forcing a password change are proposed requirements and are not currently implemented in the login page.
 
-No password will be made, the login will be approval by the OPT generation By any authenticator app. 
+### 4.1.4 Admin Accounts
+
+Admin accounts are provisioned through controlled setup/seed operations. Admin is intentionally not an option in the current login role selector, and there is no implemented Authenticator OTP login flow in the current login page. If admin sign-in is required, it needs an explicit, secure design and implementation; it must not be assumed to work through the existing page.
 ## 4.2 Student Side
 
 ### 4.2.1 Browsing Page
@@ -451,7 +463,7 @@ Notification channels:
 
 ## 8. MongoDB Database Design
 
-The system will use MongoDB as its primary database. Data will be organized into collections containing JSON-like documents.
+The system uses MongoDB as its primary database, accessed by Mongoose models. Data is organized into collections containing BSON documents. Mongoose creates collections as documents are inserted; the database initialization script creates model indexes.
 
 The database will use a combination of:
 
@@ -461,7 +473,7 @@ The database will use a combination of:
 
 ### 8.1 Users Collection
 
-The `users` collection will store student, faculty, and admin accounts.
+The `users` collection will store student, faculty, and admin accounts. Passwords are stored as bcrypt hashes, not plaintext.
 
 Fields:
 
@@ -601,18 +613,18 @@ This replaces the separate relational `BorrowRequestItems` table.
 
 ### 8.5 Documents
 
-Documents uploaded for a request may be stored as embedded document metadata inside the corresponding `borrow_requests` document.
+Document metadata is stored in a separate Mongoose `Document` collection, with `requestId` and `uploadedBy` ObjectId references. The actual uploaded file is stored on disk under `server/uploads/`.
 
-Each document record will contain:
+Each document record contains:
+- `_id`
+- `requestId`
+- `uploadedBy`
+- `fileName`
+- `filePath`
+- `fileType`
+- `createdAt` and `updatedAt`
 
-* `documentId`
-* `uploadedBy`
-* `fileName`
-* `filePath`
-* `fileType`
-* `uploadDate`
-
-The actual uploaded file will remain in the protected server upload directory.
+The current upload middleware accepts PDF, JPG, JPEG, and PNG files up to 5 MB. Authorization for accessing uploaded files must be enforced by authenticated endpoints; the upload directory should not be exposed without access controls.
 
 ---
 
@@ -730,7 +742,7 @@ MongoDB indexes should be created for frequently searched fields such as:
 
 ## 9. File System / Project Structure
 
-The project is organized as a full-stack web application with a React frontend, an Express backend, a MySQL database layer, and a server-side upload directory for student documents.
+The project is organized as a full-stack web application with a React frontend, an Express backend, a MongoDB/Mongoose data layer, and a server-side upload directory for student documents.
 
 Recommended file system structure:
 
@@ -895,6 +907,17 @@ Upload rules:
 
 ## 12. Functional Requirements
 
+### 12.1 Authentication Requirements
+- The system must authenticate users with email, password, and a selected role.
+- The system must hash passwords with bcrypt and must never store plaintext passwords.
+- The system must issue a JWT after successful authentication.
+- The frontend must attach the JWT as a Bearer token to protected API requests.
+- Invalid credentials must produce a clear error message without revealing whether a particular email exists.
+- Student registration must validate required fields and password confirmation.
+- Role-specific access must be enforced by backend authorization middleware, not only by hiding frontend controls.
+- Admin login via OTP/Authenticator and forced faculty password changes are future requirements and must not be documented as currently working until implemented.
+
+### 12.2 Core System Requirements
 - The system must allow students to log in and submit borrowing requests.
 - The system must show item availability in real time.
 - The system must allow document upload during checkout.
@@ -908,6 +931,8 @@ Upload rules:
 
 ## 13. Non-Functional Requirements
 
+- Authentication secrets and database credentials must be stored in environment variables and excluded from version control.
+- MongoDB must be reachable before the API server starts accepting requests.
 - The web app should be responsive and usable on desktop, tablet, and mobile.
 - The interface should be simple and easy to use.
 - Pages should load quickly.
@@ -928,6 +953,17 @@ Upload rules:
 - Analytics dashboard for lab usage.
 - Maintenance schedule for lab equipment.
 
-## 15. Conclusion
+## 15. Acceptance Criteria
+
+- A valid student or faculty account can authenticate using the matching role, email, and password.
+- Invalid credentials return an authentication error and do not store a token.
+- A successful login response contains a token and public user information without exposing the password hash.
+- Protected API requests require a valid JWT.
+- Student request history is scoped to the authenticated student.
+- Inventory, borrowing requests, approvals, penalties, and document metadata persist in MongoDB.
+- Seed and index initialization commands complete successfully against the configured MongoDB instance.
+- The application does not depend on Sequelize or MySQL for runtime persistence.
+
+## 16. Conclusion
 
 This Inventory Management System will help Makers Lab 2 and Design IoT Lab manage borrowing, approvals, returns, reminders, and penalties in a structured digital way. It reduces manual paperwork, improves accountability, and provides clear visibility for students, faculty, and admin users.

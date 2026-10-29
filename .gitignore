@@ -6,4 +6,5 @@ build/
 coverage/
 server/uploads/*
 !server/uploads/.gitkeep
+~$*.docx
 
