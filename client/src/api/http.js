@@ -14,3 +14,20 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Clear expired credentials
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      const currentPath = window.location.pathname;
+      if (currentPath !== "/login" && currentPath !== "/admin-login") {
+        window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
+

@@ -131,19 +131,52 @@ export async function listRequests(req, res, next) {
   }
 }
 
-// Get single request detail
+// Get single request detail (Supports full ObjectId, #GP-XXXX suffix, and student enrollment number)
 export async function getRequestById(req, res, next) {
   try {
-    const request = await BorrowRequest.findById(req.params.id)
-      .populate("studentId", "name email phone enrollmentNumber universityProgram semester division residenceType")
-      .populate("labId", "name facultyInchargeName facultyInchargeEmail")
-      .populate("items.itemId", "name assetCode category condition availableQuantity totalQuantity")
-      .populate("approvals.facultyId", "name email role");
+    let raw = String(req.params.id || "").trim();
+    if (raw.includes("AWT-PASS:")) {
+      raw = raw.split("AWT-PASS:")[1].trim();
+    }
+    raw = raw.replace(/^#?GP-/, "").trim();
 
-    if (!request) return res.status(404).json({ message: "Request not found" });
+    let request = null;
+
+    // 1. Try direct ObjectId match if valid 24 hex characters
+    if (/^[0-9a-fA-F]{24}$/.test(raw)) {
+      request = await BorrowRequest.findById(raw)
+        .populate("studentId", "name email phone enrollmentNumber universityProgram semester division residenceType")
+        .populate("labId", "name facultyInchargeName facultyInchargeEmail")
+        .populate("items.itemId", "name assetCode category condition availableQuantity totalQuantity")
+        .populate("approvals.facultyId", "name email role");
+    }
+
+    // 2. If not found or raw is a short code / enrollment number, search recent requests
+    if (!request) {
+      const candidates = await BorrowRequest.find()
+        .populate("studentId", "name email phone enrollmentNumber universityProgram semester division residenceType")
+        .populate("labId", "name facultyInchargeName facultyInchargeEmail")
+        .populate("items.itemId", "name assetCode category condition availableQuantity totalQuantity")
+        .populate("approvals.facultyId", "name email role")
+        .sort({ createdAt: -1 })
+        .limit(100);
+
+      const target = raw.toLowerCase();
+      request = candidates.find((r) => {
+        const fullId = String(r._id).toLowerCase();
+        const short8 = fullId.slice(-8);
+        const short6 = fullId.slice(-6);
+        const roll = (r.studentId?.enrollmentNumber || "").toLowerCase();
+        return fullId === target || short8 === target || short6 === target || roll === target;
+      });
+    }
+
+    if (!request) {
+      return res.status(404).json({ message: `No requisition found for reference "${raw}"` });
+    }
 
     // Students can only see their own requests
-    if (req.user.role === "student" && String(request.studentId._id || request.studentId) !== req.user.id) {
+    if (req.user.role === "student" && String(request.studentId?._id || request.studentId) !== req.user.id) {
       return res.status(403).json({ message: "Unauthorized access to request" });
     }
 
@@ -152,6 +185,7 @@ export async function getRequestById(req, res, next) {
     return next(error);
   }
 }
+
 
 // Issue items to student (Stock Decrement)
 export async function issueItems(req, res, next) {

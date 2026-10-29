@@ -6,17 +6,21 @@ export default function GatePassModal({ request, onClose }) {
   if (!request) return null;
 
   const [qrCodeUrl, setQrCodeUrl] = useState("");
+  const [copied, setCopied] = useState(false);
   const reqId = String(request._id || "").slice(-8).toUpperCase();
   const student = request.studentId || {};
   const labName = request.labId?.name || "Makers Lab 2 / Design IoT Lab";
   const items = request.items || [];
   const status = (request.status || "approved").toUpperCase();
 
+  const verifyUrl = typeof window !== "undefined"
+    ? `${window.location.origin}/requests?verify=${request._id}`
+    : `AWT-PASS:${request._id}`;
+
   useEffect(() => {
     if (!request?._id) return;
-    const payload = `AWT-PASS:${request._id}`;
-    QRCode.toDataURL(payload, {
-      width: 140,
+    QRCode.toDataURL(verifyUrl, {
+      width: 160,
       margin: 1,
       color: {
         dark: "#5C381E",
@@ -24,8 +28,21 @@ export default function GatePassModal({ request, onClose }) {
       }
     })
       .then((url) => setQrCodeUrl(url))
-      .catch((err) => console.error("QR generation failed", err));
+      .catch((err) => {
+        console.error("QR generation fallback to short string", err);
+        QRCode.toDataURL(`AWT-PASS:${request._id}`, { width: 140, margin: 1 })
+          .then((url) => setQrCodeUrl(url))
+          .catch((e) => console.error(e));
+      });
   }, [request]);
+
+  const handleCopyLink = () => {
+    if (navigator?.clipboard) {
+      navigator.clipboard.writeText(verifyUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    }
+  };
 
 
   const handlePrint = () => {
@@ -180,25 +197,31 @@ export default function GatePassModal({ request, onClose }) {
             </div>
 
             {/* Dynamic Counter QR Code */}
-            <div className="signature-box qr-verify-box" style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+            <div
+              className="signature-box qr-verify-box clickable"
+              onClick={handleCopyLink}
+              title="Click to copy verification URL or scan with phone camera"
+              style={{ display: "flex", flexDirection: "column", alignItems: "center", cursor: "pointer" }}
+            >
               {qrCodeUrl ? (
                 <img
                   src={qrCodeUrl}
                   alt="Requisition QR Code"
-                  style={{ width: "88px", height: "88px", borderRadius: "6px", border: "1px solid #d5c8be" }}
+                  style={{ width: "92px", height: "92px", borderRadius: "6px", border: "1px solid #d5c8be", transition: "transform 0.2s" }}
                 />
               ) : (
-                <div style={{ width: "88px", height: "88px", background: "#f0ece7", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <div style={{ width: "92px", height: "92px", background: "#f0ece7", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "6px" }}>
                   <QrCode size={36} color="var(--accent)" />
                 </div>
               )}
-              <span style={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--accent)", marginTop: "4px", letterSpacing: "0.03em" }}>
-                SCAN AT LAB COUNTER
+              <span style={{ fontSize: "0.7rem", fontWeight: 700, color: copied ? "#285420" : "var(--accent)", marginTop: "4px", letterSpacing: "0.03em" }}>
+                {copied ? "✓ LINK COPIED!" : "SCAN WITH CAMERA"}
               </span>
-              <span style={{ fontSize: "0.65rem", color: "var(--muted)" }}>
-                AWT-PASS:{reqId}
+              <span style={{ fontSize: "0.64rem", color: "var(--muted)" }}>
+                Ref: #GP-{reqId}
               </span>
             </div>
+
 
             <div className="signature-box">
               <div className="sig-verified">

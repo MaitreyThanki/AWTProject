@@ -11,6 +11,26 @@ import RequestsPage from "./pages/RequestsPage.jsx";
 import PenaltiesPage from "./pages/PenaltiesPage.jsx";
 import { ToastProvider } from "./components/Toast.jsx";
 
+function ProtectedRoute({ children, allowedRoles }) {
+  const token = localStorage.getItem("token");
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+
+  let user = null;
+  try {
+    user = JSON.parse(localStorage.getItem("user") || "null");
+  } catch (e) {
+    user = null;
+  }
+
+  if (allowedRoles && user && !allowedRoles.includes(user.role)) {
+    return <Navigate to="/inventory" replace />;
+  }
+
+  return children;
+}
+
 export default function App() {
   return (
     <ToastProvider>
@@ -20,15 +40,51 @@ export default function App() {
           <Route path="/admin-login" element={<AdminLoginPage />} />
           <Route element={<AppLayout />}>
             <Route path="/" element={<Navigate to="/inventory" replace />} />
-            <Route path="/student" element={<StudentDashboard />} />
-            <Route path="/faculty" element={<FacultyDashboard />} />
-            <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/inventory" element={<InventoryPage />} />
-            <Route path="/requests" element={<RequestsPage />} />
-            <Route path="/penalties" element={<PenaltiesPage />} />
+            <Route
+              path="/student"
+              element={
+                <ProtectedRoute allowedRoles={["student"]}>
+                  <StudentDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/faculty"
+              element={
+                <ProtectedRoute allowedRoles={["faculty"]}>
+                  <FacultyDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute allowedRoles={["admin"]}>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/requests"
+              element={
+                <ProtectedRoute>
+                  <RequestsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/penalties"
+              element={
+                <ProtectedRoute>
+                  <PenaltiesPage />
+                </ProtectedRoute>
+              }
+            />
           </Route>
         </Routes>
       </BrowserRouter>
     </ToastProvider>
   );
 }
+

@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { api } from "../api/http.js";
-import { ClipboardList, Calendar, MapPin, FileText, Search, Download, Printer, ShieldCheck } from "lucide-react";
+import { ClipboardList, Calendar, MapPin, FileText, Search, Download, Printer, ShieldCheck, PlusCircle, CheckCircle2 } from "lucide-react";
 import GatePassModal from "../components/GatePassModal.jsx";
 import { exportToCsv } from "../utils/exportCsv.js";
 import { useToast } from "../components/Toast.jsx";
@@ -12,8 +13,26 @@ export default function RequestsPage() {
   const [search, setSearch] = useState("");
   const [selectedGatePass, setSelectedGatePass] = useState(null);
   const { addToast } = useToast();
+  const location = useLocation();
 
   const user = JSON.parse(localStorage.getItem("user") || "null");
+
+  // Check for ?verify=ID or ?scan=ID from camera QR scan
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const verifyId = params.get("verify") || params.get("scan");
+    if (verifyId) {
+      api.get(`/requests/${verifyId}`)
+        .then((res) => {
+          setSelectedGatePass(res.data);
+          addToast("Gate Pass loaded and verified successfully!", "success");
+        })
+        .catch((err) => {
+          console.error("Auto verify error:", err);
+          addToast("Could not verify Gate Pass link", "error");
+        });
+    }
+  }, [location.search]);
 
   useEffect(() => {
     fetchRequests();
@@ -68,7 +87,10 @@ export default function RequestsPage() {
           <p className="dashboard-subtitle">Track requisition statuses, return dates, and print official equipment gate passes</p>
         </div>
 
-        <div style={{ display: "flex", gap: "10px" }}>
+        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+          <Link to="/inventory" className="btn btn-primary" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <PlusCircle size={16} /> New Requisition
+          </Link>
           <button className="btn btn-outline" onClick={handleExportCsv} title="Download CSV Records">
             <Download size={16} /> Export CSV
           </button>
@@ -78,7 +100,7 @@ export default function RequestsPage() {
       {/* Tabs and Search Bar */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px", marginBottom: "16px" }}>
         <div className="tab-group" style={{ margin: 0 }}>
-          {["all", "pending", "approved", "issued", "returned", "overdue"].map((status) => (
+          {["all", "pending", "approved", "issued", "returned", "overdue", "rejected"].map((status) => (
             <button
               key={status}
               className={`tab-btn ${filterStatus === status ? "active" : ""}`}
@@ -91,6 +113,7 @@ export default function RequestsPage() {
         </div>
 
         <div className="search-bar" style={{ minWidth: "240px", margin: 0 }}>
+
           <Search size={16} />
           <input
             type="text"

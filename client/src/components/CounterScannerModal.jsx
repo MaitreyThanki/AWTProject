@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   QrCode,
   Search,
@@ -11,7 +11,9 @@ import {
   User,
   ShieldCheck,
   Zap,
-  Printer
+  Printer,
+  Camera,
+  CameraOff
 } from "lucide-react";
 import { api } from "../api/http.js";
 import { useToast } from "./Toast.jsx";
@@ -51,6 +53,11 @@ export default function CounterScannerModal({ onClose, onActionCompleted, preloa
   const [damageCost, setDamageCost] = useState(300);
   const [conditionNotes, setConditionNotes] = useState("");
   const [showGatePass, setShowGatePass] = useState(false);
+  const [cameraActive, setCameraActive] = useState(false);
+  const [cameraError, setCameraError] = useState(null);
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+  const detectorInterval = useRef(null);
   const { addToast } = useToast();
 
   // If there are preloaded requests, default to first approved/issued for quick-test
@@ -58,50 +65,112 @@ export default function CounterScannerModal({ onClose, onActionCompleted, preloa
     ["approved", "issued"].includes((r.status || "").toLowerCase())
   );
 
-  async function handleSearch(targetId) {
-    const rawId = (targetId || query).trim();
-    if (!rawId) return;
+  // Clean up camera on unmount
+  useEffect(() => {
+    return () => {
+      stopCamera();
+    };
+  }, []);
 
-    // Clean input if QR payload e.g. AWT-PASS:ID or GP-ID or URL
-    let cleanId = rawId;
-    if (cleanId.includes("AWT-PASS:")) {
-      cleanId = cleanId.split("AWT-PASS:")[1].trim();
-    } else if (cleanId.startsWith("#GP-") || cleanId.startsWith("GP-")) {
-      cleanId = cleanId.replace(/^#?GP-/, "").trim();
+  async function startCamera() {
+    setCameraError(null);
+    try {
+      if (!navigator?.mediaDevices?.getUserMedia) {
+        throw new Error("Camera API not supported in this browser");
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" }
+      });
+      streamRef.current = stream;
+      setCameraActive(true);
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+
+      // BarcodeDetector API if supported (Chromium / Edge / Chrome)
+      if ("BarcodeDetector" in window) {
+        const barcodeDetector = new window.BarcodeDetector({ formats: ["qr_code", "code_128", "ean_13"] });
+        detectorInterval.current = setInterval(async () => {
+          if (videoRef.current && videoRef.current.readyState === 4) {
+            try {
+              const codes = await barcodeDetector.detect(videoRef.current);
+              if (codes && codes.length > 0) {
+                const scannedRaw = codes[0].rawValue;
+                handleSearch(scannedRaw);
+                stopCamera();
+              }
+            } catch (err) {
+              // detection frame error
+            }
+          }
+        }, 400);
+      }
+    } catch (err) {
+      console.error("Camera access failed:", err);
+      setCameraError(err.message || "Camera permission denied or camera device busy.");
+      setCameraActive(false);
     }
+  }
+
+  function stopCamera() {
+    if (detectorInterval.current) {
+      clearInterval(detectorInterval.current);
+      detectorInterval.current = null;
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+    setCameraActive(false);
+  }
+
+  async function handleSearch(targetId) {
+    let raw = (targetId || query).trim();
+    if (!raw) return;
+
+    // 1. Extract from URL if full URL is passed
+    if (raw.includes("verify=") || raw.includes("scan=")) {
+      const match = raw.match(/[?&](verify|scan)=([a-zA-Z0-9]+)/);
+      if (match) raw = match[2];
+    }
+
+    // 2. Clean input if QR payload e.g. AWT-PASS:ID or GP-ID
+    if (raw.includes("AWT-PASS:")) {
+      raw = raw.split("AWT-PASS:")[1].trim();
+    }
+    raw = raw.replace(/^#?GP-/, "").trim();
 
     setLoading(true);
     setActiveRequest(null);
     try {
-      // First try matching in preloaded list by full ID or last 6/8 chars
+      // Direct API fetch (server now supports full ObjectId, 6/8 char suffixes, and student roll number)
+      const res = await api.get(`/requests/${raw}`);
+      setActiveRequest(res.data);
+      playScanSound(true);
+      addToast(`Found Requisition #${String(res.data._id).slice(-6)}`, "info");
+    } catch (err) {
+      console.error("Scanner lookup error:", err);
+      // Fallback search in preloaded list
       const localMatch = preloadedRequests.find(
         (r) =>
-          r._id === cleanId ||
-          String(r._id).toUpperCase().endsWith(cleanId.toUpperCase()) ||
-          (r.studentId?.enrollmentNumber || "").toLowerCase() === cleanId.toLowerCase()
+          String(r._id).toLowerCase() === raw.toLowerCase() ||
+          String(r._id).toUpperCase().endsWith(raw.toUpperCase()) ||
+          (r.studentId?.enrollmentNumber || "").toLowerCase() === raw.toLowerCase()
       );
 
       if (localMatch) {
-        // Fetch fresh detail
-        const res = await api.get(`/requests/${localMatch._id}`);
-        setActiveRequest(res.data);
+        setActiveRequest(localMatch);
         playScanSound(true);
-        addToast(`Found Requisition #${String(res.data._id).slice(-6)}`, "info");
+        addToast(`Found Requisition #${String(localMatch._id).slice(-6)}`, "info");
       } else {
-        // Fetch directly from server by ID
-        const res = await api.get(`/requests/${cleanId}`);
-        setActiveRequest(res.data);
-        playScanSound(true);
-        addToast(`Found Requisition #${String(res.data._id).slice(-6)}`, "info");
+        playScanSound(false);
+        addToast(err.response?.data?.message || `No requisition found for "${raw}"`, "error");
       }
-    } catch (err) {
-      console.error("Scanner lookup error:", err);
-      playScanSound(false);
-      addToast(err.response?.data?.message || "Requisition not found with this ID/Barcode", "error");
     } finally {
       setLoading(false);
     }
   }
+
 
   async function handleIssue() {
     if (!activeRequest) return;
@@ -178,8 +247,8 @@ export default function CounterScannerModal({ onClose, onActionCompleted, preloa
         </div>
 
         {/* Input & Lookup Bar */}
-        <div className="scanner-lookup-wrap">
-          <div className="search-bar" style={{ flex: 1, margin: 0 }}>
+        <div className="scanner-lookup-wrap" style={{ flexWrap: "wrap", gap: "10px" }}>
+          <div className="search-bar" style={{ flex: 1, minWidth: "260px", margin: 0 }}>
             <Search size={18} />
             <input
               type="text"
@@ -192,15 +261,69 @@ export default function CounterScannerModal({ onClose, onActionCompleted, preloa
               autoFocus
             />
           </div>
+
           <button
             className="btn btn-primary"
             onClick={() => handleSearch()}
             disabled={loading || !query.trim()}
             style={{ display: "flex", alignItems: "center", gap: "6px" }}
           >
-            <Zap size={16} /> Lookup Requisition
+            <Zap size={16} /> Lookup
+          </button>
+
+          <button
+            type="button"
+            className={`btn ${cameraActive ? "btn-danger" : "btn-outline"}`}
+            onClick={cameraActive ? stopCamera : startCamera}
+            style={{ display: "flex", alignItems: "center", gap: "6px" }}
+            title="Scan with laptop / device webcam"
+          >
+            {cameraActive ? <CameraOff size={16} /> : <Camera size={16} />}
+            <span>{cameraActive ? "Stop Camera" : "Live Camera"}</span>
           </button>
         </div>
+
+        {/* Live Camera Viewfinder */}
+        {cameraActive && (
+          <div className="camera-viewfinder-box" style={{ marginTop: "14px", position: "relative", borderRadius: "10px", overflow: "hidden", background: "#000", textAlign: "center" }}>
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              style={{ width: "100%", maxHeight: "260px", objectFit: "cover", display: "block" }}
+            />
+            {/* Animated Laser Reticle */}
+            <div className="scanner-reticle" style={{
+              position: "absolute",
+              top: "15%",
+              left: "20%",
+              width: "60%",
+              height: "70%",
+              border: "2px dashed #48BB78",
+              borderRadius: "8px",
+              boxShadow: "0 0 15px rgba(72, 187, 120, 0.4)",
+              pointerEvents: "none"
+            }}>
+              <div className="scanner-laser" style={{
+                width: "100%",
+                height: "2px",
+                background: "linear-gradient(90deg, transparent, #48BB78, transparent)",
+                animation: "scanLaser 2s infinite linear"
+              }} />
+            </div>
+            <span style={{ position: "absolute", bottom: "8px", left: 0, right: 0, color: "#FFF", fontSize: "0.78rem", background: "rgba(0,0,0,0.6)", padding: "3px 0" }}>
+              Hold Gate Pass QR code in front of camera to auto-detect
+            </span>
+          </div>
+        )}
+
+        {cameraError && (
+          <div style={{ marginTop: "10px", padding: "8px 12px", background: "#FDE8E8", border: "1px solid #F8B4B4", borderRadius: "6px", fontSize: "0.8rem", color: "#9B1C1C" }}>
+            {cameraError} (You can enter the Pass Ref # or student roll number directly above).
+          </div>
+        )}
+
 
         {/* Quick Test Queue Chips */}
         {activeQueues.length > 0 && !activeRequest && (
