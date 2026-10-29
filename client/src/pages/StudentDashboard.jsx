@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
 import MetricCard from "../components/MetricCard.jsx";
-import { RefreshCcw, History, Printer } from "lucide-react";
+import { RefreshCcw, History, Printer, Award, FileCheck2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { api } from "../api/http.js";
 import GatePassModal from "../components/GatePassModal.jsx";
+import NoDuesCertificateModal from "../components/NoDuesCertificateModal.jsx";
 
 export default function StudentDashboard() {
   const [history, setHistory] = useState([]);
@@ -16,6 +17,7 @@ export default function StudentDashboard() {
   });
   const [loading, setLoading] = useState(true);
   const [selectedGatePass, setSelectedGatePass] = useState(null);
+  const [showNoDuesModal, setShowNoDuesModal] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -50,12 +52,32 @@ export default function StudentDashboard() {
 
   return (
     <section>
-      <div className="dashboard-header">
+      <div className="dashboard-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "16px" }}>
         <div>
           <h1>Student Dashboard</h1>
           <p className="dashboard-subtitle">Manage your lab requests, equipment clearances, and borrowing history.</p>
         </div>
+
+        <div>
+          <button
+            className="btn btn-primary"
+            onClick={() => setShowNoDuesModal(true)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              padding: "10px 18px",
+              backgroundColor: "#285420",
+              boxShadow: "0 2px 8px rgba(40, 84, 32, 0.25)"
+            }}
+            title="Generate Official Institutional No-Dues Certificate"
+          >
+            <Award size={18} />
+            <span>Generate No-Dues Clearance</span>
+          </button>
+        </div>
       </div>
+
 
       <div className="metric-grid">
         <MetricCard label="Active Requests" value={metrics.activeRequests} />
@@ -166,6 +188,12 @@ export default function StudentDashboard() {
           onClose={() => setSelectedGatePass(null)}
         />
       )}
+
+      {showNoDuesModal && (
+        <NoDuesCertificateModal
+          onClose={() => setShowNoDuesModal(false)}
+        />
+      )}
     </section>
   );
-}
+}

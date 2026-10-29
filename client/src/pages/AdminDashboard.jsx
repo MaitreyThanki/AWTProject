@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from "react";
 import MetricCard from "../components/MetricCard.jsx";
 import { api } from "../api/http.js";
-import { ShieldCheck, UserPlus, History, AlertTriangle, FileText, Download, Printer, CheckCircle } from "lucide-react";
+import { ShieldCheck, UserPlus, History, AlertTriangle, FileText, Download, Printer, CheckCircle, QrCode, BarChart3, Zap } from "lucide-react";
 import GatePassModal from "../components/GatePassModal.jsx";
+import CounterScannerModal from "../components/CounterScannerModal.jsx";
+import AnalyticsDashboard from "../components/AnalyticsDashboard.jsx";
 import { exportToCsv } from "../utils/exportCsv.js";
 import { useToast } from "../components/Toast.jsx";
 
@@ -23,7 +25,9 @@ export default function AdminDashboard() {
   const [overrideLogs, setOverrideLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedGatePass, setSelectedGatePass] = useState(null);
+  const [showScannerModal, setShowScannerModal] = useState(false);
   const { addToast } = useToast();
+
 
   // Override Modal
   const [overrideTarget, setOverrideTarget] = useState(null);
@@ -129,6 +133,15 @@ export default function AdminDashboard() {
         </div>
 
         <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+          <button
+            className="btn btn-primary"
+            onClick={() => setShowScannerModal(true)}
+            style={{ display: "flex", alignItems: "center", gap: "6px" }}
+            title="Open Counter Scanner for fast handover & returns"
+          >
+            <QrCode size={16} /> ⚡ Counter Quick Scanner
+          </button>
+
           {activeTab === "overrides" ? (
             <button className="btn btn-outline" onClick={handleExportOverrides}>
               <Download size={16} /> Export Audit Logs
@@ -162,12 +175,18 @@ export default function AdminDashboard() {
         <button className={`tab-btn ${activeTab === "overrides" ? "active" : ""}`} onClick={() => setActiveTab("overrides")}>
           Override Audit Logs ({overrideLogs.length})
         </button>
+        <button className={`tab-btn ${activeTab === "analytics" ? "active" : ""}`} onClick={() => setActiveTab("analytics")}>
+          <BarChart3 size={15} style={{ marginRight: "4px" }} /> Analytics & Insights
+        </button>
       </div>
 
-      {loading ? (
+      {activeTab === "analytics" ? (
+        <AnalyticsDashboard />
+      ) : loading ? (
         <div className="empty-state">Loading administration records...</div>
       ) : activeTab === "overrides" ? (
         <div className="audit-table-wrap">
+
           {overrideLogs.length === 0 ? (
             <div className="empty-state">No administrative overrides have been logged yet.</div>
           ) : (
@@ -405,6 +424,15 @@ export default function AdminDashboard() {
           onClose={() => setSelectedGatePass(null)}
         />
       )}
+
+      {showScannerModal && (
+        <CounterScannerModal
+          onClose={() => setShowScannerModal(false)}
+          onActionCompleted={loadAdminData}
+          preloadedRequests={requests}
+        />
+      )}
     </section>
   );
 }
+

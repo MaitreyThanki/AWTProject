@@ -10,10 +10,12 @@ import {
   UserCheck,
   Compass,
   User as UserIcon,
-  Settings
+  Settings,
+  Sparkles
 } from "lucide-react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import UserProfileModal from "../components/UserProfileModal.jsx";
+import NotificationCenter from "../components/NotificationCenter.jsx";
 
 export default function AppLayout() {
   const navigate = useNavigate();
@@ -115,8 +117,34 @@ export default function AppLayout() {
       </aside>
 
       <main className="content">
-        <Outlet />
+        {/* Topbar Navigation & Notification Center */}
+        <header className="content-topbar no-print">
+          <div className="topbar-breadcrumb">
+            <span className="topbar-facility">Makers Lab 2 & Design IoT Lab</span>
+            <span className="topbar-badge">GSFC University • Term 2026</span>
+          </div>
+
+          <div className="topbar-actions">
+            {token && <NotificationCenter />}
+            {user && (
+              <button
+                type="button"
+                className="topbar-user-pill"
+                onClick={() => setShowProfileModal(true)}
+                title="Manage profile & security settings"
+              >
+                <span className="topbar-avatar">{user.name ? user.name.charAt(0).toUpperCase() : "U"}</span>
+                <span className="topbar-name">{user.name}</span>
+              </button>
+            )}
+          </div>
+        </header>
+
+        <div style={{ padding: "24px" }}>
+          <Outlet />
+        </div>
       </main>
+
 
       {showProfileModal && (
         <UserProfileModal

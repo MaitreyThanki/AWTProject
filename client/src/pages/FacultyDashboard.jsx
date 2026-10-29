@@ -1,8 +1,10 @@
 import React, { useEffect, useState, useMemo } from "react";
 import MetricCard from "../components/MetricCard.jsx";
 import { api } from "../api/http.js";
-import { Check, X, FileText, PackageCheck, RotateCcw, Download, Search, Printer } from "lucide-react";
+import { Check, X, FileText, PackageCheck, RotateCcw, Download, Search, Printer, QrCode, BarChart3, Zap } from "lucide-react";
 import GatePassModal from "../components/GatePassModal.jsx";
+import CounterScannerModal from "../components/CounterScannerModal.jsx";
+import AnalyticsDashboard from "../components/AnalyticsDashboard.jsx";
 import { exportToCsv } from "../utils/exportCsv.js";
 import { useToast } from "../components/Toast.jsx";
 
@@ -20,7 +22,9 @@ export default function FacultyDashboard() {
   const [actionRemarks, setActionRemarks] = useState({});
   const [search, setSearch] = useState("");
   const [selectedGatePass, setSelectedGatePass] = useState(null);
+  const [showScannerModal, setShowScannerModal] = useState(false);
   const { addToast } = useToast();
+
 
   useEffect(() => {
     loadData();
@@ -116,7 +120,16 @@ export default function FacultyDashboard() {
           <p className="dashboard-subtitle">Review lab equipment borrowing requests, documents, and manage returns</p>
         </div>
 
-        <div style={{ display: "flex", gap: "10px" }}>
+        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+          <button
+            className="btn btn-primary"
+            onClick={() => setShowScannerModal(true)}
+            style={{ display: "flex", alignItems: "center", gap: "6px" }}
+            title="Open Counter Scanner for fast handover & returns"
+          >
+            <QrCode size={16} /> ⚡ Counter Quick Scanner
+          </button>
+
           <button className="btn btn-outline" onClick={handleExportCsv} title="Download CSV report">
             <Download size={16} /> Export CSV
           </button>
@@ -147,32 +160,40 @@ export default function FacultyDashboard() {
           <button className={`tab-btn ${activeTab === "all" ? "active" : ""}`} onClick={() => setActiveTab("all")}>
             All Requests
           </button>
+          <button className={`tab-btn ${activeTab === "analytics" ? "active" : ""}`} onClick={() => setActiveTab("analytics")}>
+            <BarChart3 size={15} style={{ marginRight: "4px" }} /> Analytics & Insights
+          </button>
         </div>
 
-        <div className="search-bar" style={{ minWidth: "240px", margin: 0 }}>
-          <Search size={16} />
-          <input
-            type="text"
-            placeholder="Search student, roll no, item..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          {search && (
-            <button
-              onClick={() => setSearch("")}
-              style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)" }}
-            >
-              ✕
-            </button>
-          )}
-        </div>
+        {activeTab !== "analytics" && (
+          <div className="search-bar" style={{ minWidth: "240px", margin: 0 }}>
+            <Search size={16} />
+            <input
+              type="text"
+              placeholder="Search student, roll no, item..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            {search && (
+              <button
+                onClick={() => setSearch("")}
+                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)" }}
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
-      {loading ? (
+      {activeTab === "analytics" ? (
+        <AnalyticsDashboard />
+      ) : loading ? (
         <div className="empty-state">Loading requisitions...</div>
       ) : filteredRequests.length === 0 ? (
         <div className="empty-state">No requests found in this queue.</div>
       ) : (
+
         <div className="faculty-queue">
           {filteredRequests.map((req) => (
             <div className="faculty-card" key={req._id}>
@@ -314,6 +335,15 @@ export default function FacultyDashboard() {
           onClose={() => setSelectedGatePass(null)}
         />
       )}
+
+      {showScannerModal && (
+        <CounterScannerModal
+          onClose={() => setShowScannerModal(false)}
+          onActionCompleted={loadData}
+          preloadedRequests={requests}
+        />
+      )}
     </section>
   );
 }
+

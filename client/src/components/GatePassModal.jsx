@@ -1,14 +1,32 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Printer, X, ShieldCheck, QrCode, Building, User, Calendar, CheckCircle2 } from "lucide-react";
+import QRCode from "qrcode";
 
 export default function GatePassModal({ request, onClose }) {
   if (!request) return null;
 
+  const [qrCodeUrl, setQrCodeUrl] = useState("");
   const reqId = String(request._id || "").slice(-8).toUpperCase();
   const student = request.studentId || {};
   const labName = request.labId?.name || "Makers Lab 2 / Design IoT Lab";
   const items = request.items || [];
   const status = (request.status || "approved").toUpperCase();
+
+  useEffect(() => {
+    if (!request?._id) return;
+    const payload = `AWT-PASS:${request._id}`;
+    QRCode.toDataURL(payload, {
+      width: 140,
+      margin: 1,
+      color: {
+        dark: "#5C381E",
+        light: "#FFFFFF"
+      }
+    })
+      .then((url) => setQrCodeUrl(url))
+      .catch((err) => console.error("QR generation failed", err));
+  }, [request]);
+
 
   const handlePrint = () => {
     window.print();
@@ -154,12 +172,34 @@ export default function GatePassModal({ request, onClose }) {
             </p>
           </div>
 
-          {/* Signatures */}
+          {/* Signatures & Counter QR Verification */}
           <div className="gate-pass-signatures">
             <div className="signature-box">
               <div className="sig-line" />
               <span>Student Borrower Signature</span>
             </div>
+
+            {/* Dynamic Counter QR Code */}
+            <div className="signature-box qr-verify-box" style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+              {qrCodeUrl ? (
+                <img
+                  src={qrCodeUrl}
+                  alt="Requisition QR Code"
+                  style={{ width: "88px", height: "88px", borderRadius: "6px", border: "1px solid #d5c8be" }}
+                />
+              ) : (
+                <div style={{ width: "88px", height: "88px", background: "#f0ece7", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <QrCode size={36} color="var(--accent)" />
+                </div>
+              )}
+              <span style={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--accent)", marginTop: "4px", letterSpacing: "0.03em" }}>
+                SCAN AT LAB COUNTER
+              </span>
+              <span style={{ fontSize: "0.65rem", color: "var(--muted)" }}>
+                AWT-PASS:{reqId}
+              </span>
+            </div>
+
             <div className="signature-box">
               <div className="sig-verified">
                 <CheckCircle2 size={16} color="#285420" /> Digitally Authorized
@@ -168,6 +208,7 @@ export default function GatePassModal({ request, onClose }) {
               <span>Faculty In-Charge / Lab Assistant</span>
             </div>
           </div>
+
         </div>
       </div>
     </div>

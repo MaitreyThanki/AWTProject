@@ -1,15 +1,20 @@
-import { Router } from "express";
-import { getDashboard } from "../controllers/dashboardController.js";
+import {
+  getDashboard,
+  getAnalyticsData,
+  getStudentClearance
+} from "../controllers/dashboardController.js";
 import { authenticate, authorize } from "../middleware/auth.js";
 
 const router = Router();
 
-// Any authenticated user can access the shared dashboard endpoint.
-// Keep this if students and faculty also use it.
+// Dashboard overview metrics
 router.get("/", authenticate, getDashboard);
 
-// If this endpoint is exclusively for administrators,
-// use this pattern instead:
-// router.get("/", authenticate, authorize("admin"), getDashboard); 
+// Visual Analytics & Lab Insights aggregation
+router.get("/analytics", authenticate, getAnalyticsData);
+
+// Student No-Dues Clearance Eligibility Check
+router.get("/no-dues-clearance", authenticate, authorize("student"), getStudentClearance);
 
 export default router;
+

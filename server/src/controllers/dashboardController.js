@@ -137,3 +137,163 @@ export async function getDashboard(req, res, next) {
     return next(error);
   }
 }
+
+// Visual Analytics & Lab Insights aggregation
+export async function getAnalyticsData(req, res, next) {
+  try {
+    const [
+      categoryData,
+      statusData,
+      topBorrowedData,
+      inventoryItems,
+      allRequests
+    ] = await Promise.all([
+      InventoryItem.aggregate([
+        {
+          $group: {
+            _id: { $ifNull: ["$category", "General"] },
+            count: { $sum: 1 },
+            totalQuantity: { $sum: "$totalQuantity" },
+            availableQuantity: { $sum: "$availableQuantity" }
+          }
+        },
+        { $sort: { totalQuantity: -1 } }
+      ]),
+      BorrowRequest.aggregate([
+        {
+          $group: {
+            _id: "$status",
+            count: { $sum: 1 }
+          }
+        }
+      ]),
+      BorrowRequest.aggregate([
+        { $unwind: "$items" },
+        {
+          $group: {
+            _id: "$items.itemName",
+            borrowCount: { $sum: "$items.quantityRequested" }
+          }
+        },
+        { $sort: { borrowCount: -1 } },
+        { $limit: 7 }
+      ]),
+      InventoryItem.find().select("name totalQuantity availableQuantity condition status category"),
+      BorrowRequest.find()
+        .populate("studentId", "name enrollmentNumber")
+        .populate("labId", "name")
+        .sort({ createdAt: -1 })
+        .limit(10)
+    ]);
+
+    // Calculate Stock Health Metrics
+    let inStock = 0;
+    let lowStock = 0;
+    let outOfStock = 0;
+    let damaged = 0;
+
+    inventoryItems.forEach((item) => {
+      if (item.condition === "Damaged" || item.status === "damaged") {
+        damaged++;
+      } else if (item.availableQuantity === 0) {
+        outOfStock++;
+      } else if (item.availableQuantity <= 5) {
+        lowStock++;
+      } else {
+        inStock++;
+      }
+    });
+
+    // Recent activity stream
+    const recentEvents = allRequests.map((r) => ({
+      id: r._id,
+      studentName: r.studentId?.name || "Student",
+      enrollment: r.studentId?.enrollmentNumber || "25BT04D...",
+      itemsSummary: r.items?.map((i) => `${i.itemName} (${i.quantityRequested})`).join(", ") || "Equipment",
+      status: r.status,
+      timestamp: r.updatedAt || r.createdAt
+    }));
+
+    return res.json({
+      categories: categoryData.map((c) => ({
+        name: c._id,
+        itemsCount: c.count,
+        totalQuantity: c.totalQuantity,
+        availableQuantity: c.availableQuantity,
+        borrowedQuantity: Math.max(0, c.totalQuantity - c.availableQuantity)
+      })),
+      requestStatuses: statusData.reduce((acc, curr) => {
+        acc[curr._id] = curr.count;
+        return acc;
+      }, {}),
+      topBorrowed: topBorrowedData.map((t) => ({
+        name: t._id,
+        count: t.borrowCount
+      })),
+      stockHealth: {
+        inStock,
+        lowStock,
+        outOfStock,
+        damaged,
+        total: inventoryItems.length
+      },
+      recentEvents
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+// Student No-Dues Clearance Eligibility & Certificate Data
+export async function getStudentClearance(req, res, next) {
+  try {
+    const studentId = req.user.id;
+
+    const [student, activeRequests, pendingPenalties, allStudentRequests] = await Promise.all([
+      User.findById(studentId).select("name email enrollmentNumber universityProgram semester division residenceType phone"),
+      BorrowRequest.find({
+        studentId,
+        status: { $in: ["pending", "approved", "issued"] }
+      }).populate("items.itemId", "name assetCode"),
+      Penalty.find({
+        studentId,
+        status: "pending"
+      }),
+      BorrowRequest.find({
+        studentId,
+        status: "returned"
+      })
+    ]);
+
+    const activeCount = activeRequests.length;
+    const unpaidPenaltyTotal = pendingPenalties.reduce((sum, p) => sum + (p.amount || 0), 0);
+    const eligible = activeCount === 0 && unpaidPenaltyTotal === 0;
+
+    const clearanceRef = `GSFCU-ND-${new Date().getFullYear()}-${String(studentId).slice(-6).toUpperCase()}`;
+
+    return res.json({
+      eligible,
+      student,
+      clearanceRef,
+      generatedDate: new Date(),
+      activeCount,
+      unpaidPenaltyTotal,
+      activeBorrowings: activeRequests.map((r) => ({
+        id: r._id,
+        status: r.status,
+        expectedReturnDate: r.expectedReturnDate,
+        items: r.items?.map((i) => `${i.itemName} (Qty: ${i.quantityRequested})`).join(", ")
+      })),
+      unpaidPenalties: pendingPenalties.map((p) => ({
+        id: p._id,
+        reason: p.reason,
+        amount: p.amount,
+        date: p.createdAt
+      })),
+      totalReturnedCount: allStudentRequests.length
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
