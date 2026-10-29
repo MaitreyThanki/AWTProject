@@ -154,16 +154,14 @@ export default function StudentDashboard() {
                     </span>
 
                     <div style={{ display: "flex", gap: "6px" }}>
-                      {isEligibleForGatePass && (
-                        <button
-                          className="btn btn-outline"
-                          style={{ padding: "6px 10px", fontSize: "0.82rem", display: "flex", alignItems: "center", gap: "4px" }}
-                          onClick={() => setSelectedGatePass(request)}
-                          title="View & Print Official Gate Pass"
-                        >
-                          <Printer size={14} /> Gate Pass
-                        </button>
-                      )}
+                      <button
+                        className="btn btn-outline"
+                        style={{ padding: "6px 10px", fontSize: "0.82rem", display: "flex", alignItems: "center", gap: "4px" }}
+                        onClick={() => setSelectedGatePass(request)}
+                        title="View & Print Official Gate Pass / Slip"
+                      >
+                        <Printer size={14} /> {isEligibleForGatePass ? "Gate Pass" : "Preview Slip"}
+                      </button>
 
                       <Link
                         to="/inventory"

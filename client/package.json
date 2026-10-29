@@ -12,6 +12,7 @@
     "@vitejs/plugin-react": "^4.3.1",
     "axios": "^1.7.3",
     "bootstrap": "^5.3.3",
+    "jsqr": "^1.4.0",
     "lucide-react": "^0.468.0",
     "qrcode": "^1.5.4",
     "react": "^18.3.1",

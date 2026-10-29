@@ -13,8 +13,11 @@ import {
   Zap,
   Printer,
   Camera,
-  CameraOff
+  CameraOff,
+  Image as ImageIcon,
+  Upload
 } from "lucide-react";
+import jsQR from "jsqr";
 import { api } from "../api/http.js";
 import { useToast } from "./Toast.jsx";
 import GatePassModal from "./GatePassModal.jsx";
@@ -55,15 +58,22 @@ export default function CounterScannerModal({ onClose, onActionCompleted, preloa
   const [showGatePass, setShowGatePass] = useState(false);
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState(null);
+  const [sampleList, setSampleList] = useState(preloadedRequests);
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const detectorInterval = useRef(null);
+  const fileInputRef = useRef(null);
   const { addToast } = useToast();
 
-  // If there are preloaded requests, default to first approved/issued for quick-test
-  const activeQueues = preloadedRequests.filter((r) =>
-    ["approved", "issued"].includes((r.status || "").toLowerCase())
-  );
+  useEffect(() => {
+    if (!preloadedRequests || preloadedRequests.length === 0) {
+      api.get("/requests")
+        .then((res) => {
+          if (res.data) setSampleList(res.data);
+        })
+        .catch(() => {});
+    }
+  }, [preloadedRequests]);
 
   // Clean up camera on unmount
   useEffect(() => {
@@ -87,24 +97,33 @@ export default function CounterScannerModal({ onClose, onActionCompleted, preloa
         videoRef.current.srcObject = stream;
       }
 
-      // BarcodeDetector API if supported (Chromium / Edge / Chrome)
-      if ("BarcodeDetector" in window) {
-        const barcodeDetector = new window.BarcodeDetector({ formats: ["qr_code", "code_128", "ean_13"] });
-        detectorInterval.current = setInterval(async () => {
-          if (videoRef.current && videoRef.current.readyState === 4) {
-            try {
-              const codes = await barcodeDetector.detect(videoRef.current);
-              if (codes && codes.length > 0) {
-                const scannedRaw = codes[0].rawValue;
-                handleSearch(scannedRaw);
+      // Universal real-time QR decoder using offscreen canvas + jsQR
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+
+      detectorInterval.current = setInterval(() => {
+        if (videoRef.current && videoRef.current.readyState === 4) {
+          try {
+            const vw = videoRef.current.videoWidth;
+            const vh = videoRef.current.videoHeight;
+            if (vw > 0 && vh > 0) {
+              canvas.width = vw;
+              canvas.height = vh;
+              ctx.drawImage(videoRef.current, 0, 0, vw, vh);
+              const imgData = ctx.getImageData(0, 0, vw, vh);
+              const code = jsQR(imgData.data, imgData.width, imgData.height, {
+                inversionAttempts: "dontInvert"
+              });
+              if (code && code.data) {
+                handleSearch(code.data);
                 stopCamera();
               }
-            } catch (err) {
-              // detection frame error
             }
+          } catch (err) {
+            // Ignore frame read error
           }
-        }, 400);
-      }
+        }
+      }, 250);
     } catch (err) {
       console.error("Camera access failed:", err);
       setCameraError(err.message || "Camera permission denied or camera device busy.");
@@ -124,12 +143,50 @@ export default function CounterScannerModal({ onClose, onActionCompleted, preloa
     setCameraActive(false);
   }
 
+  // Handle uploading a QR code image / screenshot
+  function handleImageUpload(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const canvas = document.createElement("canvas");
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext("2d", { willReadFrequently: true });
+          ctx.drawImage(img, 0, 0);
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const code = jsQR(imageData.data, imageData.width, imageData.height);
+
+          if (code && code.data) {
+            addToast("Decoded QR Code successfully!", "success");
+            handleSearch(code.data);
+          } else {
+            addToast("No QR code found in this image. Try another screenshot.", "error");
+          }
+        } catch (err) {
+          addToast("Failed to process QR image", "error");
+        }
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  }
+
   async function handleSearch(targetId) {
     let raw = (targetId || query).trim();
     if (!raw) return;
 
     // 1. Extract from URL if full URL is passed
-    if (raw.includes("verify=") || raw.includes("scan=")) {
+    if (raw.includes("/verify/")) {
+      raw = raw.split("/verify/")[1].split("?")[0].split("#")[0].trim();
+    } else if (raw.includes("/pass/")) {
+      raw = raw.split("/pass/")[1].split("?")[0].split("#")[0].trim();
+    } else if (raw.includes("verify=") || raw.includes("scan=")) {
       const match = raw.match(/[?&](verify|scan)=([a-zA-Z0-9]+)/);
       if (match) raw = match[2];
     }
@@ -144,14 +201,14 @@ export default function CounterScannerModal({ onClose, onActionCompleted, preloa
     setActiveRequest(null);
     try {
       // Direct API fetch (server now supports full ObjectId, 6/8 char suffixes, and student roll number)
-      const res = await api.get(`/requests/${raw}`);
+      const res = await api.get(`/requests/${raw}?verify=true`);
       setActiveRequest(res.data);
       playScanSound(true);
       addToast(`Found Requisition #${String(res.data._id).slice(-6)}`, "info");
     } catch (err) {
       console.error("Scanner lookup error:", err);
       // Fallback search in preloaded list
-      const localMatch = preloadedRequests.find(
+      const localMatch = sampleList.find(
         (r) =>
           String(r._id).toLowerCase() === raw.toLowerCase() ||
           String(r._id).toUpperCase().endsWith(raw.toUpperCase()) ||
@@ -222,9 +279,9 @@ export default function CounterScannerModal({ onClose, onActionCompleted, preloa
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div
-        className="modal scanner-modal"
+        className="modal-panel scanner-modal"
         onClick={(e) => e.stopPropagation()}
-        style={{ maxWidth: "700px" }}
+        style={{ maxWidth: "760px", padding: "24px" }}
       >
         {/* Header */}
         <div className="modal-header">
@@ -281,7 +338,52 @@ export default function CounterScannerModal({ onClose, onActionCompleted, preloa
             {cameraActive ? <CameraOff size={16} /> : <Camera size={16} />}
             <span>{cameraActive ? "Stop Camera" : "Live Camera"}</span>
           </button>
+
+          <button
+            type="button"
+            className="btn btn-outline"
+            onClick={() => fileInputRef.current?.click()}
+            style={{ display: "flex", alignItems: "center", gap: "6px" }}
+            title="Upload a QR code photo or screenshot"
+          >
+            <ImageIcon size={16} />
+            <span>Upload Image</span>
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleImageUpload}
+            style={{ display: "none" }}
+          />
         </div>
+
+        {/* Quick Test Sample Requisitions */}
+        {sampleList && sampleList.length > 0 && (
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginTop: "12px", fontSize: "0.8rem" }}>
+            <span style={{ color: "var(--muted)", fontWeight: 600 }}>Quick Test Requisitions:</span>
+            {sampleList.slice(0, 5).map((r) => (
+              <button
+                key={r._id}
+                type="button"
+                className="badge"
+                onClick={() => handleSearch(r._id)}
+                style={{
+                  cursor: "pointer",
+                  border: "1px solid var(--border)",
+                  background: "var(--page)",
+                  color: "var(--accent)",
+                  padding: "4px 8px",
+                  borderRadius: "6px",
+                  fontSize: "0.76rem"
+                }}
+                title={`Test scan for ${r.items?.[0]?.itemName || "Item"}`}
+              >
+                ⚡ #{String(r._id).slice(-6)} ({r.status})
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Live Camera Viewfinder */}
         {cameraActive && (

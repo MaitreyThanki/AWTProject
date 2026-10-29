@@ -3,6 +3,7 @@ import {
   createBorrowRequest,
   listRequests,
   getRequestById,
+  getPublicVerification,
   issueItems,
   returnItems,
   cancelRequest
@@ -11,6 +12,9 @@ import { authenticate, authorize } from "../middleware/auth.js";
 import { upload } from "../middleware/upload.js";
 
 const router = Router();
+
+// Public gate pass verification (Zero authentication required for QR code camera scans)
+router.get("/public-verify/:id", getPublicVerification);
 
 // List requests (Student sees own, faculty sees lab, admin sees all)
 router.get("/", authenticate, listRequests);

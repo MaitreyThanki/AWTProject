@@ -1,8 +1,23 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { api } from "../api/http.js";
-import { ClipboardList, Calendar, MapPin, FileText, Search, Download, Printer, ShieldCheck, PlusCircle, CheckCircle2 } from "lucide-react";
+import {
+  ClipboardList,
+  Calendar,
+  MapPin,
+  FileText,
+  Search,
+  Download,
+  Printer,
+  ShieldCheck,
+  PlusCircle,
+  CheckCircle2,
+  QrCode,
+  ExternalLink,
+  Zap
+} from "lucide-react";
 import GatePassModal from "../components/GatePassModal.jsx";
+import CounterScannerModal from "../components/CounterScannerModal.jsx";
 import { exportToCsv } from "../utils/exportCsv.js";
 import { useToast } from "../components/Toast.jsx";
 
@@ -12,24 +27,34 @@ export default function RequestsPage() {
   const [filterStatus, setFilterStatus] = useState("all");
   const [search, setSearch] = useState("");
   const [selectedGatePass, setSelectedGatePass] = useState(null);
+  const [showScanner, setShowScanner] = useState(false);
   const { addToast } = useToast();
   const location = useLocation();
 
   const user = JSON.parse(localStorage.getItem("user") || "null");
 
-  // Check for ?verify=ID or ?scan=ID from camera QR scan
+  // Check for ?verify=ID or ?scan=ID from camera QR scan or deep links
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const verifyId = params.get("verify") || params.get("scan");
     if (verifyId) {
-      api.get(`/requests/${verifyId}`)
+      // First try public verification endpoint to avoid 401/403 blocks
+      api.get(`/requests/public-verify/${verifyId}`)
         .then((res) => {
           setSelectedGatePass(res.data);
-          addToast("Gate Pass loaded and verified successfully!", "success");
+          addToast(`Gate Pass #${String(res.data._id).slice(-6)} verified successfully!`, "success");
         })
-        .catch((err) => {
-          console.error("Auto verify error:", err);
-          addToast("Could not verify Gate Pass link", "error");
+        .catch(() => {
+          // Fallback to regular endpoint with ?verify=true
+          api.get(`/requests/${verifyId}?verify=true`)
+            .then((res) => {
+              setSelectedGatePass(res.data);
+              addToast("Gate Pass loaded successfully!", "success");
+            })
+            .catch((err) => {
+              console.error("Auto verify error:", err);
+              addToast("Could not verify Gate Pass link", "error");
+            });
         });
     }
   }, [location.search]);
@@ -88,6 +113,16 @@ export default function RequestsPage() {
         </div>
 
         <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+          {user && ["faculty", "admin"].includes(user.role) && (
+            <button
+              className="btn btn-primary"
+              onClick={() => setShowScanner(true)}
+              style={{ display: "flex", alignItems: "center", gap: "6px" }}
+              title="Open hardware check-in / check-out counter scanner"
+            >
+              <Zap size={16} /> Counter Scanner
+            </button>
+          )}
           <Link to="/inventory" className="btn btn-primary" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
             <PlusCircle size={16} /> New Requisition
           </Link>
@@ -193,16 +228,27 @@ export default function RequestsPage() {
                     {req.status}
                   </span>
 
-                  {isApprovedOrActive && (
+                  <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
                     <button
                       className="btn btn-outline"
-                      style={{ padding: "6px 12px", fontSize: "0.82rem", display: "flex", alignItems: "center", gap: "6px" }}
+                      style={{ padding: "6px 10px", fontSize: "0.82rem", display: "flex", alignItems: "center", gap: "6px" }}
                       onClick={() => setSelectedGatePass(req)}
-                      title="Generate official printable gate pass"
+                      title="View & Print Official Gate Pass / Slip"
                     >
-                      <Printer size={14} /> Gate Pass
+                      <Printer size={14} />
+                      {isApprovedOrActive ? "Gate Pass" : req.status === "pending" ? "Preview Pass" : "View Record"}
                     </button>
-                  )}
+                    <Link
+                      to={`/verify/${req._id}`}
+                      className="btn btn-outline"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ padding: "6px 8px", fontSize: "0.82rem" }}
+                      title="Open Public Verification Link"
+                    >
+                      <ExternalLink size={14} />
+                    </Link>
+                  </div>
                 </div>
               </div>
             );
@@ -214,6 +260,14 @@ export default function RequestsPage() {
         <GatePassModal
           request={selectedGatePass}
           onClose={() => setSelectedGatePass(null)}
+        />
+      )}
+
+      {showScanner && (
+        <CounterScannerModal
+          preloadedRequests={requests}
+          onClose={() => setShowScanner(false)}
+          onActionCompleted={fetchRequests}
         />
       )}
     </section>

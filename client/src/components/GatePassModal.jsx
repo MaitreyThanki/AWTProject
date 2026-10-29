@@ -14,7 +14,7 @@ export default function GatePassModal({ request, onClose }) {
   const status = (request.status || "approved").toUpperCase();
 
   const verifyUrl = typeof window !== "undefined"
-    ? `${window.location.origin}/requests?verify=${request._id}`
+    ? `${window.location.origin}/verify/${request._id}`
     : `AWT-PASS:${request._id}`;
 
   useEffect(() => {
@@ -44,7 +44,6 @@ export default function GatePassModal({ request, onClose }) {
     }
   };
 
-
   const handlePrint = () => {
     window.print();
   };
@@ -52,9 +51,9 @@ export default function GatePassModal({ request, onClose }) {
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div
-        className="modal gate-pass-modal"
+        className="modal-panel gate-pass-modal"
         onClick={(e) => e.stopPropagation()}
-        style={{ maxWidth: "720px", padding: "0" }}
+        style={{ maxWidth: "760px", padding: "0" }}
       >
         {/* Actions bar (hidden during print) */}
         <div className="gate-pass-toolbar no-print">

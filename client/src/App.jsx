@@ -9,11 +9,19 @@ import AdminDashboard from "./pages/AdminDashboard.jsx";
 import InventoryPage from "./pages/InventoryPage.jsx";
 import RequestsPage from "./pages/RequestsPage.jsx";
 import PenaltiesPage from "./pages/PenaltiesPage.jsx";
+import PublicGatePassVerifyPage from "./pages/PublicGatePassVerifyPage.jsx";
 import { ToastProvider } from "./components/Toast.jsx";
 
 function ProtectedRoute({ children, allowedRoles }) {
   const token = localStorage.getItem("token");
   if (!token) {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const verifyId = params.get("verify") || params.get("scan");
+      if (verifyId) {
+        return <Navigate to={`/verify/${verifyId}`} replace />;
+      }
+    }
     return <Navigate to="/login" replace />;
   }
 
@@ -38,6 +46,9 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/admin-login" element={<AdminLoginPage />} />
+          {/* Public Verification Routes (Zero login required for phone QR scans) */}
+          <Route path="/verify/:id" element={<PublicGatePassVerifyPage />} />
+          <Route path="/pass/:id" element={<PublicGatePassVerifyPage />} />
           <Route element={<AppLayout />}>
             <Route path="/" element={<Navigate to="/inventory" replace />} />
             <Route path="/inventory" element={<InventoryPage />} />

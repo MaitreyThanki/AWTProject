@@ -175,12 +175,90 @@ export async function getRequestById(req, res, next) {
       return res.status(404).json({ message: `No requisition found for reference "${raw}"` });
     }
 
-    // Students can only see their own requests
-    if (req.user.role === "student" && String(request.studentId?._id || request.studentId) !== req.user.id) {
+    // Students can only see their own requests (unless verifying a pass with ?verify=true)
+    if (
+      req.user &&
+      req.user.role === "student" &&
+      req.query.verify !== "true" &&
+      String(request.studentId?._id || request.studentId) !== req.user.id
+    ) {
       return res.status(403).json({ message: "Unauthorized access to request" });
     }
 
     return res.json(request);
+  } catch (error) {
+    return next(error);
+  }
+}
+
+// Public Gate Pass Verification (Zero authentication required for security checks and phone camera scanning)
+export async function getPublicVerification(req, res, next) {
+  try {
+    let raw = String(req.params.id || "").trim();
+    if (raw.includes("verify=")) {
+      const match = raw.match(/[?&]verify=([a-zA-Z0-9]+)/);
+      if (match) raw = match[1];
+    }
+    if (raw.includes("AWT-PASS:")) {
+      raw = raw.split("AWT-PASS:")[1].trim();
+    }
+    raw = raw.replace(/^#?GP-/, "").trim();
+
+    let request = null;
+
+    if (/^[0-9a-fA-F]{24}$/.test(raw)) {
+      request = await BorrowRequest.findById(raw)
+        .populate("studentId", "name email phone enrollmentNumber universityProgram semester division residenceType")
+        .populate("labId", "name facultyInchargeName facultyInchargeEmail")
+        .populate("items.itemId", "name assetCode category condition")
+        .populate("approvals.facultyId", "name email role");
+    }
+
+    if (!request) {
+      const candidates = await BorrowRequest.find()
+        .populate("studentId", "name email phone enrollmentNumber universityProgram semester division residenceType")
+        .populate("labId", "name facultyInchargeName facultyInchargeEmail")
+        .populate("items.itemId", "name assetCode category condition")
+        .populate("approvals.facultyId", "name email role")
+        .sort({ createdAt: -1 })
+        .limit(100);
+
+      const target = raw.toLowerCase();
+      request = candidates.find((r) => {
+        const fullId = String(r._id).toLowerCase();
+        const short8 = fullId.slice(-8);
+        const short6 = fullId.slice(-6);
+        const roll = (r.studentId?.enrollmentNumber || "").toLowerCase();
+        return fullId === target || short8 === target || short6 === target || roll === target;
+      });
+    }
+
+    if (!request) {
+      return res.status(404).json({
+        verified: false,
+        message: `No gate pass record found for "${raw}"`
+      });
+    }
+
+    const isAuthorized = ["approved", "issued", "returned"].includes((request.status || "").toLowerCase());
+
+    return res.json({
+      verified: true,
+      _id: request._id,
+      passRef: `#GP-${String(request._id).slice(-8).toUpperCase()}`,
+      status: request.status,
+      isAuthorized,
+      student: request.studentId || {},
+      lab: request.labId || {},
+      items: request.items || [],
+      purpose: request.purpose || "Laboratory coursework and academic project execution",
+      facultyRemarks: request.facultyRemarks,
+      adminRemarks: request.adminRemarks,
+      expectedReturnDate: request.expectedReturnDate,
+      actualReturnDate: request.actualReturnDate,
+      createdAt: request.createdAt,
+      verifiedTimestamp: new Date().toISOString()
+    });
   } catch (error) {
     return next(error);
   }
